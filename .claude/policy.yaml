@@ -1,0 +1,96 @@
+# Smurf orchestrator — operational policy
+# Single source of truth for caps, allowlists, and project-specific guardrails.
+# Hooks (Phase 3) read this file; agents must consult it before acting.
+
+# Bash commands the orchestrator and subagents may execute.
+# Patterns are glob-style; matched against the full command string.
+bash_allowlist:
+  # Version control + GitHub CLI
+  - "git *"
+  - "gh *"
+  # Project verify shim — agents call only this
+  - "./verify.sh"
+  # Curl, restricted to the OpenRouter endpoint marketing/sales-feedback use
+  - "curl https://openrouter.ai/api/v1/*"
+  # Common dev tooling agents and humans both rely on
+  - "bash *"
+  - "sh *"
+  - "chmod *"
+  - "mkdir *"
+  - "ls *"
+  - "find *"
+  - "cat *"
+  - "echo *"
+  - "test *"
+  - "[*"
+  - "cp *"
+  - "mv *"
+  - "rm *"            # danger patterns inside the hook block 'rm -rf /' etc.
+  - "diff *"
+  - "head *"
+  - "tail *"
+  - "wc *"
+  - "sort *"
+  - "uniq *"
+  - "tr *"
+  - "sed *"
+  - "awk *"
+  - "grep *"
+  - "tee *"
+  - "yq *"
+  - "jq *"
+  # Build/run for typical stacks (project owner narrows as needed)
+  - "python3 *"
+  - "python *"
+  - "pip *"
+  - "npm *"
+  - "pnpm *"
+  - "yarn *"
+  - "node *"
+  - "go *"
+  - "cargo *"
+  - "rustc *"
+  - "make *"
+  - "mvn *"
+  - "gradle *"
+  - "docker *"
+  - "kubectl *"
+  - "scripts/*"
+  # Shell builtins / control we should not block
+  - "set *"
+  - "export *"
+  - "source *"
+  - "true"
+  - "false"
+  - "exit *"
+
+# Paths agents may never write to. Glob patterns.
+forbidden_paths:
+  - ".git/**"
+  - ".env"
+  - ".claude/runs/**"
+  - "docs/research.md"
+
+# Project-specific content patterns to block in writes (regex).
+# Add entries as the project's domain rules emerge.
+forbidden_patterns: []
+
+# Single command every agent uses to verify work. Project owner replaces
+# verify.sh body with real tests; agents only call this shim.
+verify_command: "./verify.sh"
+
+# Iteration cap: max times the orchestrator re-dispatches developer
+# after a failing QA report.
+max_qa_iterations: 2
+
+# Concurrency cap: max parallel subagents (research §1.7 token-burn).
+max_parallel_subagents: 4
+
+# Per-agent turn caps.
+max_turns_orchestrator: 60
+max_turns_subagent: 30
+
+# Cost ceilings for autonomous (cron) runs. Agent Teams budget is higher
+# because peer-to-peer messaging burns 7-15× tokens (research §1.7).
+budget_usd_subagent: 12
+budget_usd_team: 25
