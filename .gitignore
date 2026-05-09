@@ -1,0 +1,14 @@
+# Orchestrator runtime state
+.claude/runs/
+.claude/worktrees/
+
+# Local Claude Code settings (per-user, never committed)
+.claude/settings.local.json
+
+# Local secrets — never commit
+.env
+
+# OS / editor noise
+.DS_Store
+*.swp
+*.swo

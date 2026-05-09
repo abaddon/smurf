@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# SubagentStop hook — append a one-line record to .claude/runs/<ts>/agents.log
+# each time a subagent finishes.
+#
+# Stdin JSON shape:
+#   { "session_id": "...", "transcript_path": "...",
+#     "hook_event_name": "SubagentStop",
+#     "stop_hook_active": false }
+#
+# Exit 0 always — never block.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PAYLOAD=$(cat)
+
+TS="${CLAUDE_RUN_TS:-$(date -u +%Y%m%dT%H%M%SZ)}"
+RUN_DIR="$REPO_ROOT/.claude/runs/$TS"
+mkdir -p "$RUN_DIR"
+
+SESSION_ID=$(printf '%s' "$PAYLOAD" | jq -r '.session_id // "unknown"')
+TRANSCRIPT=$(printf '%s' "$PAYLOAD" | jq -r '.transcript_path // empty')
+
+# Best-effort: try to extract the subagent's name from the transcript tail.
+SUBAGENT_NAME="?"
+if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
+  SUBAGENT_NAME=$(tac "$TRANSCRIPT" 2>/dev/null \
+    | jq -r 'select(.subagent_type or .agent_name) | (.subagent_type // .agent_name)' 2>/dev/null \
+    | head -1 || echo "?")
+  [ -z "$SUBAGENT_NAME" ] && SUBAGENT_NAME="?"
+fi
+
+NOW=$(date -u +%FT%TZ)
+echo "$NOW  session=$SESSION_ID  subagent=$SUBAGENT_NAME" >> "$RUN_DIR/agents.log"
+
+exit 0
