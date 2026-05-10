@@ -12,7 +12,7 @@ never code.
 | Field | Value | Why |
 |---|---|---|
 | `model` | `sonnet` | story drafting is well within Sonnet capability |
-| `tools` | `Read, Write, Edit, Glob, Grep` | reads feedback, writes story files |
+| `tools` | `Read, Write, Edit, Bash, Glob, Grep` | reads feedback, writes story files; commits its own story files (`git add`/`git commit`) gated by `bash_allowlist` |
 | `skills` | `gherkin-stories` | template for Feature/Scenario format |
 | `mcpServers` | `linear` (optional) | future: pull priority hints from Linear backlog |
 
@@ -30,6 +30,11 @@ never code.
 
 Each file: a Gherkin Feature + a markdown trailer with Acceptance
 criteria, NFR, MoSCoW priority, Source (feedback file path), Status.
+
+The PO commits its own story files at end of wave with
+`docs(story): add <sprint-id> story file(s)`. The developer wave
+relies on the story being tracked in git; an uncommitted story would
+be picked up out-of-scope by the developer or left orphaned.
 
 See `.claude/skills/gherkin-stories/SKILL.md` for the exact template.
 
