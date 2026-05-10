@@ -1,32 +1,39 @@
 #!/usr/bin/env bash
-# Idempotent crontab installer. Adds a single line for nightly runs at
-# 01:00 local time. Re-running this script is a no-op.
+# Idempotent crontab installer for smurf nightly autonomous runs.
+# Re-running is a no-op.
 #
 # Usage:
-#   bash scripts/install-cron.sh           # install (default 01:00)
-#   bash scripts/install-cron.sh "0 2 * * *"  # custom schedule
-#   bash scripts/install-cron.sh --remove  # remove the line
-#   bash scripts/install-cron.sh --status  # show current state, no changes
+#   bash install-cron.sh /path/to/project              # install at 01:00
+#   bash install-cron.sh /path/to/project "0 2 * * *"  # custom schedule
+#   bash install-cron.sh /path/to/project --remove     # remove the line
+#   bash install-cron.sh /path/to/project --status     # show current state
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SCRIPT="$REPO_ROOT/scripts/autonomous-run.sh"
-LOG_FILE="$REPO_ROOT/.claude/runs/cron.log"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+SCRIPT="$PLUGIN_ROOT/scripts/autonomous-run.sh"
+
+if [ $# -lt 1 ]; then
+  cat <<EOF >&2
+usage: $0 PROJECT_DIR [SCHEDULE | --remove | --status]
+Install a nightly cron entry that runs smurf autonomous-run.sh inside
+PROJECT_DIR. SCHEDULE is a 5-field cron spec; default "0 1 * * *".
+EOF
+  exit 2
+fi
+
+PROJECT_DIR="$(cd "$1" && pwd)"
+shift
+LOG_FILE="$PROJECT_DIR/.claude/runs/cron.log"
 
 # Marker comment lets us find/remove our line without disturbing other entries.
-MARKER="# smurf-orchestrator (autonomous-run.sh)"
-
-usage() {
-  cat <<EOF
-Usage: $0 [SCHEDULE | --remove | --status]
-Install a nightly cron entry for scripts/autonomous-run.sh.
-SCHEDULE is a 5-field cron spec; default "0 1 * * *".
-EOF
-}
+MARKER="# smurf-orchestrator (autonomous-run.sh @ $PROJECT_DIR)"
 
 case "${1:-}" in
-  --help|-h) usage; exit 0 ;;
+  --help|-h) cat <<EOF; exit 0
+usage: $0 PROJECT_DIR [SCHEDULE | --remove | --status]
+EOF
+  ;;
   --remove)  ACTION="remove" ;;
   --status)  ACTION="status" ;;
   "")        ACTION="install"; SCHEDULE="0 1 * * *" ;;
@@ -37,24 +44,23 @@ current=$(crontab -l 2>/dev/null || true)
 
 case "$ACTION" in
   status)
-    echo "$current" | grep -F "$MARKER" || echo "(not installed)"
+    echo "$current" | grep -F "$MARKER" || echo "(not installed for $PROJECT_DIR)"
     exit 0
     ;;
   remove)
     new=$(echo "$current" | grep -vF "$MARKER" || true)
-    new=$(echo "$new" | grep -vF "$SCRIPT" || true)
     printf '%s\n' "$new" | crontab -
-    echo "[install-cron] removed"
+    echo "[install-cron] removed entry for $PROJECT_DIR"
     exit 0
     ;;
   install)
     if echo "$current" | grep -qF "$MARKER"; then
-      echo "[install-cron] already installed; no change"
+      echo "[install-cron] already installed for $PROJECT_DIR; no change"
       exit 0
     fi
-    line="$SCHEDULE /usr/bin/env bash -lc 'cd $REPO_ROOT && bash $SCRIPT >> $LOG_FILE 2>&1'  $MARKER"
+    line="$SCHEDULE /usr/bin/env bash -lc 'cd $PROJECT_DIR && CLAUDE_PROJECT_DIR=$PROJECT_DIR CLAUDE_PLUGIN_ROOT=$PLUGIN_ROOT bash $SCRIPT >> $LOG_FILE 2>&1'  $MARKER"
     printf '%s\n%s\n' "$current" "$line" | sed '/^$/d' | crontab -
-    echo "[install-cron] installed: $SCHEDULE"
+    echo "[install-cron] installed: $SCHEDULE for $PROJECT_DIR"
     exit 0
     ;;
 esac

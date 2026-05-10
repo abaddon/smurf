@@ -64,12 +64,12 @@ bash_allowlist:
   - "false"
   - "exit *"
 
-# Paths agents may never write to. Glob patterns.
+# Paths agents may never write to. Glob patterns. (Plugin defaults — a
+# project may override by writing its own .claude/policy.yaml.)
 forbidden_paths:
   - ".git/**"
   - ".env"
   - ".claude/runs/next-goal.md"
-  - "docs/research.md"
 
 # Project-specific content patterns to block in writes (regex).
 # Add entries as the project's domain rules emerge.

@@ -11,13 +11,13 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 PAYLOAD=$(cat)
 
 # Use the run dir created by autonomous-run.sh if present (env CLAUDE_RUN_TS),
 # else create one stamped now (interactive sessions).
 TS="${CLAUDE_RUN_TS:-$(date -u +%Y%m%dT%H%M%SZ)}"
-RUN_DIR="$REPO_ROOT/.claude/runs/$TS"
+RUN_DIR="$PROJECT_ROOT/.claude/runs/$TS"
 mkdir -p "$RUN_DIR"
 
 SESSION_ID=$(printf '%s' "$PAYLOAD" | jq -r '.session_id // "unknown"')
@@ -31,8 +31,8 @@ fi
 
 # Files changed since the run began (best-effort).
 FILES_CHANGED="?"
-if (cd "$REPO_ROOT" && git rev-parse --git-dir > /dev/null 2>&1); then
-  FILES_CHANGED=$( (cd "$REPO_ROOT" && git status --porcelain | wc -l) || echo "?")
+if (cd "$PROJECT_ROOT" && git rev-parse --git-dir > /dev/null 2>&1); then
+  FILES_CHANGED=$( (cd "$PROJECT_ROOT" && git status --porcelain | wc -l) || echo "?")
 fi
 
 # QA iteration count from orchestrator.log if it exists.

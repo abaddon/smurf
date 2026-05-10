@@ -33,8 +33,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-FEEDBACK_DIR = REPO_ROOT / "docs" / "feedback"
+# Run inside the user's project so MCP servers and feedback files land
+# in the right place. CLAUDE_PROJECT_DIR is set by Claude Code; fall back
+# to the current working directory if invoked manually.
+PROJECT_ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
+FEEDBACK_DIR = PROJECT_ROOT / "docs" / "feedback"
 
 PROMPT_TEMPLATE = """Read-only analytics summary for the last {window}.
 
@@ -115,7 +118,7 @@ def main() -> int:
     ]
 
     print(f"[close-loop] writing {out_path}")
-    rc = subprocess.run(cmd, cwd=REPO_ROOT, env=os.environ.copy()).returncode
+    rc = subprocess.run(cmd, cwd=PROJECT_ROOT, env=os.environ.copy()).returncode
 
     if rc != 0:
         print(f"[close-loop] claude exited {rc}", file=sys.stderr)

@@ -11,11 +11,11 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 PAYLOAD=$(cat)
 
 TS="${CLAUDE_RUN_TS:-$(date -u +%Y%m%dT%H%M%SZ)}"
-RUN_DIR="$REPO_ROOT/.claude/runs/$TS"
+RUN_DIR="$PROJECT_ROOT/.claude/runs/$TS"
 mkdir -p "$RUN_DIR"
 
 SESSION_ID=$(printf '%s' "$PAYLOAD" | jq -r '.session_id // "unknown"')

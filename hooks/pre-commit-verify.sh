@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 PAYLOAD=$(cat)
 CMD=$(printf '%s' "$PAYLOAD" | jq -r '.tool_input.command // empty')
@@ -22,13 +22,13 @@ if ! [[ "$CMD" =~ ^git[[:space:]]+commit ]]; then
   exit 0
 fi
 
-if [ ! -x "$REPO_ROOT/verify.sh" ]; then
-  echo "BLOCKED by pre-commit-verify: verify.sh missing or not executable at $REPO_ROOT/verify.sh" >&2
+if [ ! -x "$PROJECT_ROOT/verify.sh" ]; then
+  echo "BLOCKED by pre-commit-verify: verify.sh missing or not executable at $PROJECT_ROOT/verify.sh" >&2
   exit 2
 fi
 
 # Capture verify output for the agent's context.
-VERIFY_OUT=$( ( cd "$REPO_ROOT" && ./verify.sh ) 2>&1 ) || RC=$?
+VERIFY_OUT=$( ( cd "$PROJECT_ROOT" && ./verify.sh ) 2>&1 ) || RC=$?
 RC="${RC:-0}"
 
 if [ "$RC" -ne 0 ]; then

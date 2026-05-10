@@ -5,10 +5,14 @@ argument-hint: <goal description with parallel features>
 
 @orchestrator: $ARGUMENTS
 
-Use **Agent Teams mode** for wave 3. The env var
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is already set in
-`.claude/settings.json`, so `Teammate.spawnTeam` and `SendMessage` are
-available to you.
+Use **Agent Teams mode** for wave 3. This requires the env var
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` to be set in the user's
+`.claude/settings.json` (or `.claude/settings.local.json`). The smurf
+plugin manifest cannot set env vars on your behalf — if
+`Teammate.spawnTeam` is unavailable, bail with: "Agent Teams mode
+requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your project's
+`.claude/settings.local.json` — set it and re-run." If the tools are
+available, `Teammate.spawnTeam` and `SendMessage` proceed normally.
 
 For wave 3 specifically:
 1. Call `Teammate.spawnTeam` with these teammates:
@@ -23,9 +27,13 @@ For wave 3 specifically:
    clarifications and `SendMessage developer` (from qa) for failure
    detail.
 4. When all tasks reach `done`, `Teammate.cleanup`.
-5. Use `budget_usd_team` from `.claude/policy.yaml` (higher than
-   subagent-mode budget — Agent Teams burn 7-15× tokens per research §1.7).
+5. Use `budget_usd_team` from the project's `.claude/policy.yaml` if
+   present, otherwise from `${CLAUDE_PLUGIN_ROOT}/policy.yaml` (higher
+   than subagent-mode budget — Agent Teams burn 7-15× tokens per
+   research §1.7).
 
 All other waves (1, 2, 4, 5) remain subagent mode.
 
-Apply caps from `.claude/policy.yaml`. Branch on `docs/rigor-level.md`.
+Apply caps from project's `.claude/policy.yaml` (override) or the plugin
+default at `${CLAUDE_PLUGIN_ROOT}/policy.yaml`. Branch on
+`docs/rigor-level.md`.

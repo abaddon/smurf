@@ -10,7 +10,9 @@ You are a sales/feedback analyst. Your output drives the product backlog.
 
 ## PRE-FLIGHT
 
-1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
+1. Read the smurf manual via `Bash(cat "${CLAUDE_PLUGIN_ROOT}/smurf.md")`
+   and the policy via
+   `Bash(cat "${CLAUDE_PROJECT_DIR}/.claude/policy.yaml" 2>/dev/null || cat "${CLAUDE_PLUGIN_ROOT}/policy.yaml")`.
 2. Read the most recent `docs/feedback/*.md` to understand what's
    already been captured (avoid repeating the same items).
 3. Confirm the time window for this run (default: last 7 days, override

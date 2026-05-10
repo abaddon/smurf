@@ -12,8 +12,13 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-POLICY="$REPO_ROOT/.claude/policy.yaml"
+# Plugin scripts run with $CLAUDE_PLUGIN_ROOT (installed plugin) and
+# $CLAUDE_PROJECT_DIR (user's project). Project-side override takes
+# precedence over the plugin-shipped default policy.
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PLUGIN_ROOT}"
+POLICY="$PROJECT_ROOT/.claude/policy.yaml"
+[ -f "$POLICY" ] || POLICY="$PLUGIN_ROOT/policy.yaml"
 
 PAYLOAD=$(cat)
 TOOL=$(printf '%s' "$PAYLOAD" | jq -r '.tool_name // empty')
@@ -30,7 +35,7 @@ case "$TOOL" in
 esac
 
 if [ ! -f "$POLICY" ]; then
-  echo "BLOCKED: .claude/policy.yaml missing — cannot evaluate policy" >&2
+  echo "BLOCKED: policy.yaml missing — checked $PROJECT_ROOT/.claude/policy.yaml and $PLUGIN_ROOT/policy.yaml" >&2
   exit 2
 fi
 
@@ -59,8 +64,8 @@ else
   ' "$POLICY")
 fi
 
-# Normalize FILE to repo-relative path for matching.
-REL_FILE="${FILE#$REPO_ROOT/}"
+# Normalize FILE to project-relative path for matching.
+REL_FILE="${FILE#$PROJECT_ROOT/}"
 
 glob_to_regex() {
   local glob="$1"
