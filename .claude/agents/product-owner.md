@@ -1,7 +1,7 @@
 ---
 name: product-owner
 description: Decomposes a goal into Gherkin user stories with acceptance criteria. Reads docs/feedback/ before producing stories so backlog drift is grounded in real signal. Invoke as wave 1.
-tools: Read, Write, Edit, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 color: green
 ---
@@ -67,5 +67,11 @@ Each story file must include in a trailing markdown block:
 ## OUTPUT CONTRACT
 
 - The created story files (one per Feature).
+- After writing the story file(s), `git add` them and commit with
+  `docs(story): add <sprint-id> story file(s)` before exiting. The
+  developer wave will not pick up untracked stories. Bash is gated at
+  runtime by `bash_allowlist` in `.claude/policy.yaml`; only
+  `git add`, `git commit`, and `git status` are needed for this step.
 - Final chat message: a markdown table with columns
-  `id | title | priority | source` (one row per story produced).
+  `id | title | priority | source` (one row per story produced), plus
+  the commit SHA on a final line.
