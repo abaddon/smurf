@@ -42,7 +42,7 @@ plan is `docs/research.md` — Architettura A from §3.
 
 ```
                   ┌──────────────────────┐
-                  │  CLAUDE.md (human)   │
+                  │ .claude/smurf.md (human) │
                   └────────────┬─────────┘
                                │ read at session-start hook
                                ▼
@@ -73,5 +73,5 @@ plan is `docs/research.md` — Architettura A from §3.
 
 ## Caps live in `.claude/policy.yaml`
 
-Single source of truth. CLAUDE.md cites this file; agents read it at
+Single source of truth. `.claude/smurf.md` cites this file; agents read it at
 pre-flight; hooks (Phase 3+) enforce it. Edit the file, not the prompts.

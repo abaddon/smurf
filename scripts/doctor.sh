@@ -46,7 +46,7 @@ warn() {
 }
 
 echo "=== Files and structure ==="
-check "CLAUDE.md exists"                       'test -f CLAUDE.md'
+check ".claude/smurf.md exists"                'test -f .claude/smurf.md'
 check ".claude/policy.yaml exists"             'test -f .claude/policy.yaml'
 check ".claude/settings.json exists"           'test -f .claude/settings.json'
 check ".claude/settings.json is valid JSON"    'jq . .claude/settings.json > /dev/null'

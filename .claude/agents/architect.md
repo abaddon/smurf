@@ -10,7 +10,7 @@ You are a software architect. You decide the shape; developers implement it.
 
 ## PRE-FLIGHT
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read the assigned story files (paths supplied in your prompt).
 3. Read existing ADRs in `docs/adr/` to maintain numbering and avoid
    contradicting prior decisions.

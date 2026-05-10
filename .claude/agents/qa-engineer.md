@@ -11,7 +11,7 @@ not to be polite.
 
 ## PRE-FLIGHT
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read the story file(s) under review (paths supplied in your prompt).
 3. Read the developer's commits since the wave started:
    `git log --oneline <since-ref>..HEAD`.

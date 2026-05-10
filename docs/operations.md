@@ -132,7 +132,7 @@ Escalations are not failures — they're the system saying "this needs a
 human". Read the escalation note and either:
 - approve manually (commit the change yourself),
 - refine the goal so the agent doesn't need to escalate,
-- adjust the `ESCALATION` rules in `CLAUDE.md` if they're too tight.
+- adjust the `ESCALATION` rules in `.claude/smurf.md` if they're too tight.
 
 ## Cost dashboard (manual)
 

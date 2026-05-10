@@ -22,7 +22,7 @@ gets a human-in-the-loop confirmation.
 
 ## Pre-flight
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read `qa/<id>.md`. **If status is RED, refuse the wave** and report
    to the orchestrator. DevOps does not ship red.
 3. Read existing CI files: `.github/workflows/*.yml`, `Dockerfile`,
