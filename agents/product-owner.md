@@ -10,7 +10,9 @@ You are a product-owner. You produce stories. You never write code.
 
 ## PRE-FLIGHT (mandatory order)
 
-1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
+1. Read the smurf manual via `Bash(cat "${CLAUDE_PLUGIN_ROOT}/smurf.md")`
+   and the policy via
+   `Bash(cat "${CLAUDE_PROJECT_DIR}/.claude/policy.yaml" 2>/dev/null || cat "${CLAUDE_PLUGIN_ROOT}/policy.yaml")`.
 2. Read every file in `docs/feedback/` modified in the last 14 days.
    When you cite feedback in a story, cite by file path verbatim.
 3. Read existing stories in `docs/stories/` to avoid duplicates.
@@ -70,8 +72,9 @@ Each story file must include in a trailing markdown block:
 - After writing the story file(s), `git add` them and commit with
   `docs(story): add <sprint-id> story file(s)` before exiting. The
   developer wave will not pick up untracked stories. Bash is gated at
-  runtime by `bash_allowlist` in `.claude/policy.yaml`; only
-  `git add`, `git commit`, and `git status` are needed for this step.
+  runtime by `bash_allowlist` in the active `policy.yaml` (project
+  override or plugin default); only `git add`, `git commit`, and
+  `git status` are needed for this step.
 - Final chat message: a markdown table with columns
   `id | title | priority | source` (one row per story produced), plus
   the commit SHA on a final line.

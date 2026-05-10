@@ -17,22 +17,29 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$REPO_ROOT"
+# Plugin scripts run with $CLAUDE_PLUGIN_ROOT (installed plugin) and
+# $CLAUDE_PROJECT_DIR (user's project). Headless `claude -p` must run
+# in the project so the plugin auto-loads in that session.
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+cd "$PROJECT_ROOT"
 
 # ---- preflight ----
 if [ ! -f ".claude/runs/next-goal.md" ]; then
-  echo "ERROR: .claude/runs/next-goal.md not found. Write the goal first." >&2
+  echo "ERROR: .claude/runs/next-goal.md not found in $PROJECT_ROOT. Run /smurf:init then write the goal." >&2
   exit 1
 fi
 
-if [ ! -f ".claude/policy.yaml" ]; then
-  echo "ERROR: .claude/policy.yaml not found." >&2
+# Policy: project override wins, plugin default fallback.
+POLICY=".claude/policy.yaml"
+[ -f "$POLICY" ] || POLICY="$PLUGIN_ROOT/policy.yaml"
+if [ ! -f "$POLICY" ]; then
+  echo "ERROR: policy.yaml not found in $PROJECT_ROOT/.claude/ or $PLUGIN_ROOT/." >&2
   exit 1
 fi
 
 if [ ! -x "verify.sh" ]; then
-  echo "ERROR: verify.sh missing or not executable." >&2
+  echo "ERROR: verify.sh missing or not executable in $PROJECT_ROOT. Run /smurf:init." >&2
   exit 1
 fi
 
@@ -52,10 +59,10 @@ esac
 if [ -n "${BUDGET_OVERRIDE:-}" ]; then
   BUDGET="$BUDGET_OVERRIDE"
 elif command -v yq >/dev/null 2>&1; then
-  BUDGET=$(yq -r ".budget_usd_${MODE}" .claude/policy.yaml)
+  BUDGET=$(yq -r ".budget_usd_${MODE}" "$POLICY")
 else
   # Fallback: grep the line
-  BUDGET=$(awk -v key="budget_usd_${MODE}:" '$1==key {print $2}' .claude/policy.yaml)
+  BUDGET=$(awk -v key="budget_usd_${MODE}:" '$1==key {print $2}' "$POLICY")
 fi
 [ -z "$BUDGET" ] && BUDGET="12"
 
@@ -91,9 +98,9 @@ trap on_term TERM INT
 
 # ---- slash command selection ----
 if [ "$MODE" = "team" ]; then
-  PROMPT="/kickoff-team $GOAL"
+  PROMPT="/smurf:kickoff-team $GOAL"
 else
-  PROMPT="/kickoff $GOAL"
+  PROMPT="/smurf:kickoff $GOAL"
 fi
 
 # ---- run ----
@@ -133,8 +140,8 @@ if [ -n "${SLACK_WEBHOOK:-}" ]; then
 fi
 
 # ---- close-loop hook (Phase 7+) ----
-if [ -x "scripts/close-loop.py" ]; then
-  python3 scripts/close-loop.py --window 7d \
+if [ -x "$PLUGIN_ROOT/scripts/close-loop.py" ]; then
+  python3 "$PLUGIN_ROOT/scripts/close-loop.py" --window 7d \
     > "$RUN_DIR/close-loop.out" 2> "$RUN_DIR/close-loop.err" || true
 fi
 

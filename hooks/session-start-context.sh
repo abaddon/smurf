@@ -10,7 +10,10 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# Plugin scripts run with $CLAUDE_PLUGIN_ROOT pointing at the installed plugin
+# and $CLAUDE_PROJECT_DIR pointing at the user's project. Fall back to the
+# repo layout when invoked directly from tests/.
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 # Drain stdin (we don't need its fields, but Claude Code expects us to read it)
 cat > /dev/null
@@ -19,14 +22,14 @@ cat <<EOF
 [session-start-context]
 
 ## Rigor level
-$(cat "$REPO_ROOT/docs/rigor-level.md" 2>/dev/null || echo "unknown — docs/rigor-level.md missing")
+$(cat "$PROJECT_ROOT/docs/rigor-level.md" 2>/dev/null || echo "unknown — docs/rigor-level.md missing")
 
 ## Recent feedback (last 3 files)
 EOF
 
-if [ -d "$REPO_ROOT/docs/feedback" ]; then
+if [ -d "$PROJECT_ROOT/docs/feedback" ]; then
   # List the 3 most recent feedback files; print their headlines (## sections)
-  find "$REPO_ROOT/docs/feedback" -maxdepth 1 -type f -name '*.md' \
+  find "$PROJECT_ROOT/docs/feedback" -maxdepth 1 -type f -name '*.md' \
     -printf '%T@ %p\n' 2>/dev/null \
     | sort -nr | head -3 | awk '{print $2}' \
     | while read -r f; do

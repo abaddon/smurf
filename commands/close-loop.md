@@ -10,7 +10,7 @@ start of the next run.
 
 Run it:
 
-!`python3 scripts/close-loop.py $ARGUMENTS`
+!`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/close-loop.py" $ARGUMENTS`
 
 After completion, print the path of the new feedback file and a 5-line
 summary of its top items.

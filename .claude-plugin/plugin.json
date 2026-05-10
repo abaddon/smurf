@@ -1,0 +1,9 @@
+{
+  "name": "smurf",
+  "version": "1.0.0",
+  "description": "Self-agentic orchestrator: product-owner → architect → developer → QA → devops → marketing waves on Claude Code.",
+  "author": { "name": "abaddon" },
+  "homepage": "https://github.com/abaddon/smurf",
+  "repository": { "type": "git", "url": "https://github.com/abaddon/smurf" },
+  "keywords": ["orchestrator", "agents", "subagents", "agent-teams"]
+}

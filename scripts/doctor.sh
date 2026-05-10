@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Health check for the smurf orchestrator. Verifies the local setup is
-# consistent. Run before the first autonomous run, or whenever the
-# system misbehaves.
+# Health check for the smurf plugin install. Splits checks into:
+#   [plugin] — files inside the installed plugin (or development repo)
+#   [project] — files the user must scaffold in their project
 #
-# Exit 0 — all checks pass.
-# Exit 1 — one or more checks failed.
+# Exit 0 — all plugin checks pass (project checks are warnings only).
+# Exit 1 — one or more plugin checks failed.
 
 set +e
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$REPO_ROOT"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
 
 PASS=0
 FAIL=0
@@ -45,67 +45,47 @@ warn() {
   fi
 }
 
-echo "=== Files and structure ==="
-check ".claude/smurf.md exists"                'test -f .claude/smurf.md'
-check ".claude/policy.yaml exists"             'test -f .claude/policy.yaml'
-check ".claude/settings.json exists"           'test -f .claude/settings.json'
-check ".claude/settings.json is valid JSON"    'jq . .claude/settings.json > /dev/null'
-check ".claude/policy.yaml is valid YAML"      'python3 -c "import yaml; yaml.safe_load(open(\".claude/policy.yaml\"))"'
-check "verify.sh exists and is executable"    'test -x verify.sh'
-check "docs/rigor-level.md exists"             'test -f docs/rigor-level.md'
+echo "=== [plugin] Manifest ==="
+check ".claude-plugin/plugin.json exists"     "test -f $PLUGIN_ROOT/.claude-plugin/plugin.json"
+check ".claude-plugin/plugin.json valid JSON" "jq . $PLUGIN_ROOT/.claude-plugin/plugin.json > /dev/null"
+check "hooks/hooks.json exists"               "test -f $PLUGIN_ROOT/hooks/hooks.json"
+check "hooks/hooks.json valid JSON"           "jq . $PLUGIN_ROOT/hooks/hooks.json > /dev/null"
+check "policy.yaml exists"                    "test -f $PLUGIN_ROOT/policy.yaml"
+check "policy.yaml is valid YAML"             "python3 -c \"import yaml; yaml.safe_load(open('$PLUGIN_ROOT/policy.yaml'))\""
+check "smurf.md exists"                       "test -f $PLUGIN_ROOT/smurf.md"
 
 echo
-echo "=== Agents ==="
+echo "=== [plugin] Agents ==="
 for a in orchestrator product-owner architect developer qa-engineer devops marketing sales-feedback; do
-  check ".claude/agents/$a.md exists" "test -f .claude/agents/$a.md"
+  check "agents/$a.md exists" "test -f $PLUGIN_ROOT/agents/$a.md"
 done
 
 echo
-echo "=== Skills ==="
+echo "=== [plugin] Skills ==="
 for s in code-quality adr-template gherkin-stories conventional-commits openrouter-curl; do
-  check ".claude/skills/$s/SKILL.md exists" "test -f .claude/skills/$s/SKILL.md"
+  check "skills/$s/SKILL.md exists" "test -f $PLUGIN_ROOT/skills/$s/SKILL.md"
 done
 
 echo
-echo "=== Hooks (executable) ==="
+echo "=== [plugin] Hooks (executable) ==="
 for h in session-start-context pre-tool-bash-allowlist policy-guard pre-commit-verify on-stop-summary on-subagent-complete; do
-  check ".claude/hooks/$h.sh executable" "test -x .claude/hooks/$h.sh"
+  check "hooks/$h.sh executable" "test -x $PLUGIN_ROOT/hooks/$h.sh"
 done
 
 echo
-echo "=== Slash commands ==="
-for c in kickoff kickoff-team nightly-run close-loop; do
-  check ".claude/commands/$c.md exists" "test -f .claude/commands/$c.md"
+echo "=== [plugin] Slash commands ==="
+for c in init kickoff kickoff-team nightly-run close-loop; do
+  check "commands/$c.md exists" "test -f $PLUGIN_ROOT/commands/$c.md"
 done
 
 echo
-echo "=== Settings ==="
-check "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in settings.json" \
-  'jq -e ".env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS == \"1\"" .claude/settings.json > /dev/null'
-check "Hooks registered for SessionStart"  'jq -e ".hooks.SessionStart | length > 0" .claude/settings.json > /dev/null'
-check "Hooks registered for PreToolUse"    'jq -e ".hooks.PreToolUse | length > 0" .claude/settings.json > /dev/null'
-check "Hooks registered for Stop"          'jq -e ".hooks.Stop | length > 0" .claude/settings.json > /dev/null'
-check "Hooks registered for SubagentStop"  'jq -e ".hooks.SubagentStop | length > 0" .claude/settings.json > /dev/null'
+echo "=== [plugin] Scripts ==="
+for s in autonomous-run.sh close-loop.py doctor.sh install-cron.sh init-project.sh; do
+  check "scripts/$s exists" "test -f $PLUGIN_ROOT/scripts/$s"
+done
 
 echo
-echo "=== Hook smoke test ==="
-if [ -x scripts/test-hooks.sh ]; then
-  if bash scripts/test-hooks.sh > /tmp/test-hooks.out 2>&1; then
-    PASSED_LINE=$(grep -E '^passed=' /tmp/test-hooks.out | tail -1)
-    echo "  PASS  scripts/test-hooks.sh ($PASSED_LINE)"
-    PASS=$((PASS+1))
-  else
-    echo "  FAIL  scripts/test-hooks.sh"
-    cat /tmp/test-hooks.out | sed 's/^/        /'
-    FAIL=$((FAIL+1))
-  fi
-else
-  echo "  WARN  scripts/test-hooks.sh missing"
-  WARN=$((WARN+1))
-fi
-
-echo
-echo "=== Tools available ==="
+echo "=== [plugin] Tools available on PATH ==="
 for t in jq yq python3 git timeout; do
   check "$t on PATH" "command -v $t > /dev/null"
 done
@@ -114,8 +94,16 @@ warn "gh on PATH (required for devops PR creation)" "command -v gh > /dev/null"
 warn "curl on PATH (required for OpenRouter shell-out)" "command -v curl > /dev/null"
 
 echo
-echo "=== MCP ==="
-warn ".mcp.json exists" 'test -f .mcp.json'
+echo "=== [project] Scaffolded files ($PROJECT_ROOT) ==="
+warn "verify.sh exists and is executable"     "test -x $PROJECT_ROOT/verify.sh"
+warn "docs/rigor-level.md exists"             "test -f $PROJECT_ROOT/docs/rigor-level.md"
+warn ".claude/runs/next-goal.md exists"       "test -f $PROJECT_ROOT/.claude/runs/next-goal.md"
+warn ".mcp.json exists (optional)"            "test -f $PROJECT_ROOT/.mcp.json"
+
+echo
+echo "=== [project] Settings ==="
+warn "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in user settings (required for /smurf:kickoff-team)" \
+  "jq -e '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS == \"1\"' $PROJECT_ROOT/.claude/settings.local.json $PROJECT_ROOT/.claude/settings.json 2>/dev/null | grep -q true"
 
 echo
 echo "=== Result ==="

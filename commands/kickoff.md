@@ -13,5 +13,8 @@ each other. QA runs after all developers report green.
 Do NOT spawn an Agent Team for this run, even if the goal contains
 parallel features. Use `/kickoff-team` for explicit team mode.
 
-Follow the wave DAG defined in `.claude/agents/orchestrator.md`. Apply
-caps from `.claude/policy.yaml`. Branch on `docs/rigor-level.md`.
+Follow the wave DAG defined in the orchestrator agent (smurf plugin).
+Apply caps from the project's `.claude/policy.yaml` if it exists,
+otherwise from the plugin default at `${CLAUDE_PLUGIN_ROOT}/policy.yaml`.
+Branch on `docs/rigor-level.md` (must exist in the project — run
+`/smurf:init` first if not).

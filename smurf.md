@@ -1,13 +1,15 @@
 # Smurf — Operating Manual
 
-This repo hosts a self-agentic orchestrator built on Claude Code. A team of
-specialist subagents plans, implements, verifies, and reports on goals
-written into `.claude/runs/next-goal.md`. The system iterates on its own
-output (QA → developer re-dispatch) and on its own backlog (cross-run
-feedback file consumed at next kickoff).
+Smurf is a self-agentic orchestrator distributed as a Claude Code
+plugin. A team of specialist subagents plans, implements, verifies,
+and reports on goals written into `.claude/runs/next-goal.md` in the
+host project. The system iterates on its own output (QA → developer
+re-dispatch) and on its own backlog (cross-run feedback file consumed
+at next kickoff).
 
-Architecture: see `docs/research.md` (the recommended Architecture A) and
-`docs/specs/00-overview.md` (this project's adaptation).
+Architecture and design background: see the smurf development repo's
+`docs/research.md` (recommended Architecture A) and
+`docs/specs/00-overview.md`.
 
 ## RIGOR_LEVEL
 
@@ -20,16 +22,18 @@ Read from `docs/rigor-level.md`. Two values:
 
 ## PROJECT_INVARIANTS
 
-This is a generic orchestrator host. Project-specific invariants belong in
-`.claude/policy.yaml` (`forbidden_patterns`) and as bullets here once the
-project grows real code:
-
-- (none yet — fill in as the project takes shape)
+Smurf is project-agnostic. Project-specific invariants belong in
+`.claude/policy.yaml` (`forbidden_patterns`) inside the host project.
+The plugin ships only sane defaults.
 
 ## AGENT_CONTRACT
 
-All operational caps live in `.claude/policy.yaml` — single source of
-truth. Agents must read that file before acting. Current keys:
+Operational caps live in `policy.yaml`. Resolution order:
+
+1. Project override: `${CLAUDE_PROJECT_DIR}/.claude/policy.yaml` (if present).
+2. Plugin default: `${CLAUDE_PLUGIN_ROOT}/policy.yaml`.
+
+Current keys:
 
 - `max_parallel_subagents`, `max_turns_orchestrator`, `max_turns_subagent`
 - `budget_usd_subagent`, `budget_usd_team`, `max_qa_iterations`
@@ -39,9 +43,10 @@ Edit `policy.yaml`, never hard-code numbers in agent prompts or scripts.
 
 ## PRE-FLIGHT (every agent, every run)
 
-1. Read `docs/rigor-level.md`.
-2. Read every file in `docs/feedback/` modified in the last 14 days.
-3. Read `.claude/policy.yaml` for current caps.
+1. Read `${CLAUDE_PROJECT_DIR}/docs/rigor-level.md`.
+2. Read every file in `${CLAUDE_PROJECT_DIR}/docs/feedback/` modified in
+   the last 14 days.
+3. Read `policy.yaml` (project override or plugin default) for current caps.
 4. Plan before edit. Use plan mode for non-trivial work.
 
 ## ESCALATION (stop and request human review)
@@ -50,10 +55,10 @@ Edit `policy.yaml`, never hard-code numbers in agent prompts or scripts.
 - Security-related change (auth, crypto, secret handling)
 - Public API contract change (route/method signature touching consumers)
 - Deletion of more than 100 lines in a single change
-- Any modification to the `.claude/` tree itself
+- Any modification to the smurf plugin tree at `${CLAUDE_PLUGIN_ROOT}/`
 
 When escalating, write a one-paragraph summary to
-`.claude/runs/<ts>/escalation.md` and exit cleanly.
+`${CLAUDE_PROJECT_DIR}/.claude/runs/<ts>/escalation.md` and exit cleanly.
 
 ## TONE / STYLE
 
