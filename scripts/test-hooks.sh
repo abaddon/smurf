@@ -58,9 +58,13 @@ assert_exit "block write to .git/config" 2 "$(run_hook .claude/hooks/policy-guar
 P=$(printf '%s' '{"tool_name":"Write","tool_input":{"file_path":"docs/x.md","content":"hi"}}' | base64 -w0)
 assert_exit "allow write to docs/" 0 "$(run_hook .claude/hooks/policy-guard.sh "$P")"
 
-# Edit to .claude/runs/foo (forbidden) — blocked
-P=$(printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":".claude/runs/x","old_string":"a","new_string":"b"}}' | base64 -w0)
-assert_exit "block edit in .claude/runs" 2 "$(run_hook .claude/hooks/policy-guard.sh "$P")"
+# Edit to .claude/runs/next-goal.md (the human-authored input file) — blocked
+P=$(printf '%s' '{"tool_name":"Edit","tool_input":{"file_path":".claude/runs/next-goal.md","old_string":"a","new_string":"b"}}' | base64 -w0)
+assert_exit "block edit to .claude/runs/next-goal.md" 2 "$(run_hook .claude/hooks/policy-guard.sh "$P")"
+
+# Write to .claude/runs/<ts>/orchestrator.log (per-run working dir) — allowed
+P=$(printf '%s' '{"tool_name":"Write","tool_input":{"file_path":".claude/runs/20260101T000000Z/orchestrator.log","content":"wave 1 done"}}' | base64 -w0)
+assert_exit "allow write to .claude/runs/<ts>/" 0 "$(run_hook .claude/hooks/policy-guard.sh "$P")"
 
 echo
 echo "=== pre-commit-verify ==="
