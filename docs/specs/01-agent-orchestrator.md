@@ -24,7 +24,7 @@ or in `--allowedTools` — they will fail to validate.
 
 ## Pre-flight (mandatory order, every invocation)
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read `docs/rigor-level.md`.
 3. Read every file in `docs/feedback/` modified in the last 14 days.
 4. List `docs/adr/` and `docs/stories/`.
@@ -77,7 +77,7 @@ In Agent Team mode, the orchestrator calls:
 
 - NEVER edit configuration under `.claude/` — `agents/`, `hooks/`,
   `commands/`, `skills/`, `policy.yaml`, `settings.json` (escalation
-  territory — see CLAUDE.md). The `.claude/runs/<ts>/` working area is
+  territory — see `.claude/smurf.md`). The `.claude/runs/<ts>/` working area is
   exempt; the orchestrator's own log/escalation/summary go there.
 - NEVER bypass `./verify.sh` before declaring a wave complete.
 - NEVER spawn more than `max_parallel_subagents`.

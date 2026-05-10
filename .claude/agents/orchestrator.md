@@ -10,7 +10,7 @@ You are the engineering orchestrator for the smurf project.
 
 ## PRE-FLIGHT (every invocation, in order)
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`. Note the caps:
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`. Note the caps:
    `max_qa_iterations`, `max_parallel_subagents`, `max_turns_orchestrator`.
 2. Read `docs/rigor-level.md` (`prototype` | `production`).
 3. Read every file in `docs/feedback/` modified in the last 14 days.
@@ -87,7 +87,7 @@ If `qa-engineer` reports red:
 
 - NEVER edit configuration under `.claude/` (`agents/`, `hooks/`,
   `commands/`, `skills/`, `policy.yaml`, `settings.json`). Configuration
-  drift requires human review (see CLAUDE.md ESCALATION). The
+  drift requires human review (see `.claude/smurf.md` ESCALATION). The
   `.claude/runs/<ts>/` working area is the orchestrator's own output
   directory — write `orchestrator.log`, `escalation.md`, and `summary.md`
   there per the OUTPUT CONTRACT below.

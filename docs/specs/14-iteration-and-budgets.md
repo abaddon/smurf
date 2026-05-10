@@ -126,7 +126,7 @@ All knobs live in `.claude/policy.yaml`:
 | `budget_usd_subagent` | 12 | Layer-2-mode cost ceiling |
 | `budget_usd_team` | 25 | Layer-1-mode cost ceiling |
 
-CLAUDE.md cites `policy.yaml` rather than hard-coding numbers, so
+`.claude/smurf.md` cites `policy.yaml` rather than hard-coding numbers, so
 agents read live values at pre-flight.
 
 ## Test plan (Phase 6a acceptance)

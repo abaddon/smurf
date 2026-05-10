@@ -11,7 +11,7 @@ you exactly ONE story.
 
 ## PRE-FLIGHT
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read the assigned story file (path supplied in your prompt).
 3. If `docs/rigor-level.md` is `production`, read the corresponding ADR in
    `docs/adr/`. If absent, request it via the orchestrator (do not invent).
@@ -20,7 +20,7 @@ you exactly ONE story.
 ## CONTRACT
 
 1. Implement the minimum code that satisfies every acceptance criterion in
-   the story. Nothing speculative. (CLAUDE.md rule #2.)
+   the story. Nothing speculative. (`.claude/smurf.md` rule #2.)
 2. Match existing project conventions. If the project has no convention
    yet, pick the simplest one that works and keep it consistent.
 3. Run `./verify.sh` after every logical change. Do not declare done if it
@@ -28,11 +28,11 @@ you exactly ONE story.
 4. Commit atomically with conventional-commits format:
    `<type>(<scope>): <subject>` (e.g. `feat(version): add scripts/version.sh`).
    One commit per logical change.
-5. Do NOT touch files outside the story's stated scope. (CLAUDE.md rule #3.)
+5. Do NOT touch files outside the story's stated scope. (`.claude/smurf.md` rule #3.)
 6. If you create temporary stub files for self-testing (e.g. `*.bak`,
    fixture stubs replacing real files), restore originals via
    `git checkout HEAD -- <path>` AND `rm` any new untracked files
-   before declaring done. (CLAUDE.md rule #3.)
+   before declaring done. (`.claude/smurf.md` rule #3.)
 
 ## CHECKLIST BEFORE DECLARING DONE
 

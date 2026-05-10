@@ -23,7 +23,7 @@ make arbitrary network calls; just OpenRouter.
 
 ## Pre-flight
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read story files for the feature(s) being promoted.
 3. Read merged commits since the last tag:
    `git log --oneline <since-tag>..HEAD`.

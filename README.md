@@ -9,6 +9,33 @@ The system iterates: QA failures re-dispatch the developer (capped); a
 nightly `close-loop.py` writes `docs/feedback/<date>.md` consumed by the
 product-owner at the next kickoff.
 
+## Install in another project
+
+```bash
+git clone https://github.com/<you>/smurf.git /tmp/smurf
+bash /tmp/smurf/scripts/install.sh /path/to/your-project
+cd /path/to/your-project
+bash scripts/doctor.sh
+```
+
+The installer is idempotent — running it twice is a no-op. It copies the
+portable parts (`.claude/agents`, `hooks`, `skills`, `commands`,
+`policy.yaml`, `settings.json`, `.claude/smurf.md`, `docs/specs/`, the
+orchestrator scripts) and scaffolds project-specific stubs only when
+they are missing (`docs/rigor-level.md`, `verify.sh`,
+`.claude/runs/next-goal.md`, `.mcp.json`). It never touches your
+project's `CLAUDE.md`.
+
+Smurf's manual lives at `.claude/smurf.md`, not `CLAUDE.md`, so it
+never collides with your project's existing instructions. To inherit
+Smurf's house rules in every Claude Code session (not just Smurf agent
+runs), append `@.claude/smurf.md` to your `CLAUDE.md`.
+
+After install: replace the no-op `verify.sh` body with your stack's
+tests, extend `bash_allowlist` and `forbidden_patterns` in
+`.claude/policy.yaml`, then write your first goal to
+`.claude/runs/next-goal.md`.
+
 ## Operate
 
 Interactive (any time):
@@ -35,7 +62,7 @@ Force Agent-Teams (peer-to-peer wave 3, Phase 6a+):
 
 ## Configure
 
-- `CLAUDE.md` — operating manual. Hand-written. Don't let an agent rewrite it.
+- `.claude/smurf.md` — Smurf's operating manual. Hand-written. Don't let an agent rewrite it. Lives under `.claude/` so it never collides with a host project's own `CLAUDE.md`.
 - `.claude/policy.yaml` — every cap and allowlist. Single source of truth.
 - `docs/rigor-level.md` — `prototype` (skip architect+integration QA) or `production`.
 - `verify.sh` — your project's test/build entrypoint. Replace the no-op default.

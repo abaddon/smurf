@@ -18,7 +18,7 @@ never code.
 
 ## Pre-flight (mandatory order)
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. **Read every file in `docs/feedback/` modified in the last 14 days.**
    This is non-negotiable — it grounds the backlog in real signal.
 3. Read existing stories in `docs/stories/` to avoid duplicates.

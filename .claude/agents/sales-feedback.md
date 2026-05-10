@@ -10,7 +10,7 @@ You are a sales/feedback analyst. Your output drives the product backlog.
 
 ## PRE-FLIGHT
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read the most recent `docs/feedback/*.md` to understand what's
    already been captured (avoid repeating the same items).
 3. Confirm the time window for this run (default: last 7 days, override

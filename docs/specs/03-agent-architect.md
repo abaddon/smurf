@@ -21,7 +21,7 @@ catches obvious slips by virtue of `forbidden_paths`.
 
 ## Pre-flight
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read assigned story files (paths supplied in prompt).
 3. Read existing ADRs in `docs/adr/` (numbering, prior decisions).
 4. Inspect source structure with `Glob`/`Grep` — never `Edit`.

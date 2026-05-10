@@ -10,7 +10,7 @@ You are a developer-relations writer. Tone: technical but accessible. No markete
 
 ## PRE-FLIGHT
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read the story files for the feature(s) being promoted.
 3. Read the merged commits: `git log --oneline <since-tag>..HEAD`.
 4. Read prior `docs/marketing/` outputs to maintain voice consistency.

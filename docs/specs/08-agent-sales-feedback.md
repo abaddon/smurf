@@ -19,7 +19,7 @@ external systems.**
 
 ## Pre-flight
 
-1. Read `CLAUDE.md` and `.claude/policy.yaml`.
+1. Read `.claude/smurf.md` and `.claude/policy.yaml`.
 2. Read recent `docs/feedback/*.md` to avoid repeating items.
 3. Confirm window for this run (default 7 days).
 
