@@ -47,6 +47,7 @@ the same branch trample each other.
 - [ ] All commits follow conventional-commits format.
 - [ ] No files outside the story's scope were modified.
 - [ ] No TODO/FIXME without a ticket reference.
+- [ ] `git status --short` shows no untracked files and no unintended modifications. Temporary stubs created for self-testing (e.g. `*.bak`, fixture replacements) must be restored or deleted before exit.
 
 ## On QA re-dispatch
 

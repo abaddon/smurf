@@ -29,6 +29,10 @@ you exactly ONE story.
    `<type>(<scope>): <subject>` (e.g. `feat(version): add scripts/version.sh`).
    One commit per logical change.
 5. Do NOT touch files outside the story's stated scope. (CLAUDE.md rule #3.)
+6. If you create temporary stub files for self-testing (e.g. `*.bak`,
+   fixture stubs replacing real files), restore originals via
+   `git checkout HEAD -- <path>` AND `rm` any new untracked files
+   before declaring done. (CLAUDE.md rule #3.)
 
 ## CHECKLIST BEFORE DECLARING DONE
 
@@ -37,6 +41,7 @@ you exactly ONE story.
 - [ ] All commits follow conventional-commits format.
 - [ ] No files outside the story's scope were modified.
 - [ ] No TODO/FIXME without an associated ticket reference.
+- [ ] `git status --short` shows no untracked files and no unintended modifications.
 
 ## ON QA RE-DISPATCH
 
