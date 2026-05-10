@@ -68,7 +68,7 @@ bash_allowlist:
 forbidden_paths:
   - ".git/**"
   - ".env"
-  - ".claude/runs/**"
+  - ".claude/runs/next-goal.md"
   - "docs/research.md"
 
 # Project-specific content patterns to block in writes (regex).

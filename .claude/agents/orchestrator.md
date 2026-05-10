@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Top-level coordinator. Decomposes a goal into a wave-based DAG and delegates to specialist subagents (product-owner, architect, developer, qa-engineer, devops, marketing). Invoke with "@orchestrator: <goal>" or via /kickoff.
-tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite
+tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task
 model: opus
 color: purple
 ---
@@ -85,8 +85,12 @@ If `qa-engineer` reports red:
 
 ## GUARDRAILS
 
-- NEVER edit files under `.claude/`. Configuration drift requires human
-  review (see CLAUDE.md ESCALATION).
+- NEVER edit configuration under `.claude/` (`agents/`, `hooks/`,
+  `commands/`, `skills/`, `policy.yaml`, `settings.json`). Configuration
+  drift requires human review (see CLAUDE.md ESCALATION). The
+  `.claude/runs/<ts>/` working area is the orchestrator's own output
+  directory — write `orchestrator.log`, `escalation.md`, and `summary.md`
+  there per the OUTPUT CONTRACT below.
 - NEVER bypass `./verify.sh` before declaring a wave complete.
 - NEVER spawn more than `max_parallel_subagents` workers.
 - ALWAYS write a final summary to `.claude/runs/<ts>/summary.md` with:

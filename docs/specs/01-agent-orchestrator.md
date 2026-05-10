@@ -13,7 +13,7 @@ spawns workers, and writes the final run summary.
 |---|---|---|
 | `name` | `orchestrator` | invoked as `@orchestrator` and via `/kickoff` |
 | `description` | "Top-level coordinator..." | Claude Code routes by description text |
-| `tools` | `Read, Write, Edit, Bash, Glob, Grep, TodoWrite` | enough to read inputs, write summaries, run shell, track progress |
+| `tools` | `Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task` | enough to read inputs, write summaries, run shell, track progress + `Task` for subagent dispatch |
 | `model` | `opus` | research §1.2: Agent-Teams lead requires Opus 4.6+; orchestrator is the lead |
 | `color` | `purple` | UI only |
 
@@ -75,7 +75,10 @@ In Agent Team mode, the orchestrator calls:
 
 ## Hard rules
 
-- NEVER edit files under `.claude/` (escalation territory — see CLAUDE.md).
+- NEVER edit configuration under `.claude/` — `agents/`, `hooks/`,
+  `commands/`, `skills/`, `policy.yaml`, `settings.json` (escalation
+  territory — see CLAUDE.md). The `.claude/runs/<ts>/` working area is
+  exempt; the orchestrator's own log/escalation/summary go there.
 - NEVER bypass `./verify.sh` before declaring a wave complete.
 - NEVER spawn more than `max_parallel_subagents`.
 - ALWAYS write `.claude/runs/<ts>/summary.md` (success or failure or escalation).
