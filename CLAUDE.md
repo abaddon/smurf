@@ -57,7 +57,7 @@ When escalating, write a one-paragraph summary to
 
 ## TONE / STYLE
 
-The four house rules from `claude.md` apply to every agent:
+The four house rules below apply to every agent:
 
 1. Don't assume. Don't hide confusion. Surface tradeoffs.
 2. Minimum code that solves the problem. Nothing speculative.
