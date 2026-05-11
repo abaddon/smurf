@@ -58,8 +58,12 @@ else
     in_list && /^[a-zA-Z]/ {in_list=0}
     in_list && /^[[:space:]]+-[[:space:]]/ {
       sub(/^[[:space:]]+-[[:space:]]+/, "");
-      gsub(/^["'\'']/, ""); gsub(/["'\'']$/, "");
-      print
+      if (match($0, /^"[^"]*"/)) { val = substr($0, 2, RLENGTH-2); print val; next }
+      if (match($0, /^'\''[^'\'']*'\''/)) { val = substr($0, 2, RLENGTH-2); print val; next }
+      val = $0;
+      sub(/[[:space:]]+#.*$/, "", val);
+      sub(/[[:space:]]+$/, "", val);
+      print val;
     }
   ' "$POLICY")
   while IFS= read -r line; do
@@ -69,8 +73,12 @@ else
     in_list && /^[a-zA-Z]/ {in_list=0}
     in_list && /^[[:space:]]+-[[:space:]]/ {
       sub(/^[[:space:]]+-[[:space:]]+/, "");
-      gsub(/^["'\'']/, ""); gsub(/["'\'']$/, "");
-      print
+      if (match($0, /^"[^"]*"/)) { val = substr($0, 2, RLENGTH-2); print val; next }
+      if (match($0, /^'\''[^'\'']*'\''/)) { val = substr($0, 2, RLENGTH-2); print val; next }
+      val = $0;
+      sub(/[[:space:]]+#.*$/, "", val);
+      sub(/[[:space:]]+$/, "", val);
+      print val;
     }
   ' "$POLICY")
 fi
