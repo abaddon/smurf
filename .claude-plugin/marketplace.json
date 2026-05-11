@@ -1,0 +1,12 @@
+{
+  "name": "smurf",
+  "owner": {
+    "name": "abaddon"
+  },
+  "plugins": [
+    {
+      "name": "smurf",
+      "source": "./plugin"
+    }
+  ]
+}

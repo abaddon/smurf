@@ -17,14 +17,22 @@ Smurf ships as a plugin — its agents, hooks, skills, commands,
 directory and are loaded by reference at runtime. The plugin is never
 copied into your project.
 
+Clone the repo, then register it as a local marketplace and install
+the plugin from inside Claude Code:
+
 ```bash
-# Clone the plugin somewhere stable on your machine
-git clone https://github.com/<you>/smurf.git ~/.claude/plugins/smurf
+git clone https://github.com/abaddon/smurf.git ~/src/smurf
+cd /path/to/your-project
+claude
+> /plugin marketplace add ~/src/smurf
+> /plugin install smurf@smurf
 ```
 
-Then point Claude Code at it (via your marketplace setup or
-`~/.claude/plugins.json`). Once it's loaded, every `/smurf:*` slash
-command becomes available.
+The repo root holds `.claude-plugin/marketplace.json`; the plugin
+itself lives under `plugin/` (canonical Claude Code marketplace
+layout). Local-path marketplaces resolve live, so edits in `~/src/smurf`
+take effect immediately — no copying. Once installed, every `/smurf:*`
+slash command becomes available.
 
 Inside your project, scaffold the project-side stubs:
 
