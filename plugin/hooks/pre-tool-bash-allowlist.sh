@@ -49,6 +49,20 @@ for p in "${DANGER_PATTERNS[@]}"; do
   fi
 done
 
+# Reject compound commands. Policy: one Bash tool call per command.
+# This keeps the allowlist auditable — each call is matched as a whole against
+# a single glob. Operators detected: && || ; | $( ` (command substitution).
+# Caveat: this also rejects commands with these operators inside quoted strings
+# (e.g. `echo "a && b"`). If you need that, write a file via the Write tool.
+case "$CMD" in
+  *"&&"*|*"||"*|*";"*|*"|"*|*'$('*|*'`'*)
+    echo "BLOCKED by pre-tool-bash-allowlist: compound commands are not allowed." >&2
+    echo "Issue one Bash tool call per command (split on &&, ||, ;, |, \$(...), or backticks)." >&2
+    echo "command: $CMD" >&2
+    exit 2
+    ;;
+esac
+
 # Allowlist from policy.yaml. Patterns are glob-style; we convert to regex.
 if [ ! -f "$POLICY" ]; then
   echo "BLOCKED: policy.yaml missing — checked $PROJECT_ROOT/.claude/policy.yaml and $PLUGIN_ROOT/policy.yaml" >&2
@@ -71,9 +85,15 @@ else
     in_list && /^[a-zA-Z]/ {in_list=0}
     in_list && /^[[:space:]]+-[[:space:]]/ {
       sub(/^[[:space:]]+-[[:space:]]+/, "");
-      gsub(/^["'\'']/, "");
-      gsub(/["'\'']$/, "");
-      print
+      # Double-quoted value: take content between first pair of double quotes.
+      if (match($0, /^"[^"]*"/)) { val = substr($0, 2, RLENGTH-2); print val; next }
+      # Single-quoted value: same with single quotes.
+      if (match($0, /^'\''[^'\'']*'\''/)) { val = substr($0, 2, RLENGTH-2); print val; next }
+      # Unquoted: strip trailing YAML inline comment and surrounding whitespace.
+      val = $0;
+      sub(/[[:space:]]+#.*$/, "", val);
+      sub(/[[:space:]]+$/, "", val);
+      print val;
     }
   ' "$POLICY")
 fi

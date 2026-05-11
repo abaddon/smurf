@@ -10,9 +10,14 @@ You are the engineering orchestrator for the smurf project.
 
 ## PRE-FLIGHT (every invocation, in order)
 
-1. Read the smurf operating manual via
-   `Bash(cat "${CLAUDE_PLUGIN_ROOT}/smurf.md")` and the policy via
-   `Bash(cat "${CLAUDE_PROJECT_DIR}/.claude/policy.yaml" 2>/dev/null || cat "${CLAUDE_PLUGIN_ROOT}/policy.yaml")`
+> Bash policy: this plugin's PreToolUse hook rejects compound commands
+> (no `&&`, `||`, `;`, `|`, `$(...)`, or backticks). Issue one Bash call
+> per command. For file reads, prefer the `Read` tool over `cat` so you
+> are not subject to the bash allowlist at all.
+
+1. Read the smurf operating manual via `Read("${CLAUDE_PLUGIN_ROOT}/smurf.md")`.
+   Then read the policy: first try `Read("${CLAUDE_PROJECT_DIR}/.claude/policy.yaml")`;
+   if it does not exist, fall back to `Read("${CLAUDE_PLUGIN_ROOT}/policy.yaml")`
    (project override wins, plugin default fallback). Note the caps:
    `max_qa_iterations`, `max_parallel_subagents`, `max_turns_orchestrator`.
 2. Read `docs/rigor-level.md` (`prototype` | `production`).

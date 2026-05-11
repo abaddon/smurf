@@ -25,8 +25,10 @@ bash_allowlist:
   - "[*"
   - "cp *"
   - "mv *"
-  - "rm *"            # danger patterns inside the hook block 'rm -rf /' etc.
+  # `rm *` is allowed; the hook's hard denylist still blocks `rm -rf /` and similar.
+  - "rm *"
   - "diff *"
+  - "date *"
   - "head *"
   - "tail *"
   - "wc *"
