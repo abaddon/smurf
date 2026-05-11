@@ -1,40 +1,59 @@
 # smurf
 
-Self-agentic orchestrator built on Claude Code. A team of specialist
-subagents (product-owner, architect, developer, qa-engineer, devops,
-marketing, sales-feedback) plans, implements, verifies, and reports on
-goals you write into `.claude/runs/next-goal.md`.
+Self-agentic orchestrator distributed as a Claude Code plugin. A team
+of specialist subagents (product-owner, architect, developer,
+qa-engineer, devops, marketing, sales-feedback) plans, implements,
+verifies, and reports on goals you write into
+`.claude/runs/next-goal.md` in your host project.
 
 The system iterates: QA failures re-dispatch the developer (capped); a
 nightly `close-loop.py` writes `docs/feedback/<date>.md` consumed by the
 product-owner at the next kickoff.
 
-## Install in another project
+## Install
+
+Smurf ships as a plugin — its agents, hooks, skills, commands,
+`policy.yaml`, and operating manual all live inside the plugin
+directory and are loaded by reference at runtime. The plugin is never
+copied into your project.
 
 ```bash
-git clone https://github.com/<you>/smurf.git /tmp/smurf
-bash /tmp/smurf/scripts/install.sh /path/to/your-project
-cd /path/to/your-project
-bash scripts/doctor.sh
+# Clone the plugin somewhere stable on your machine
+git clone https://github.com/<you>/smurf.git ~/.claude/plugins/smurf
 ```
 
-The installer is idempotent — running it twice is a no-op. It copies the
-portable parts (`.claude/agents`, `hooks`, `skills`, `commands`,
-`policy.yaml`, `settings.json`, `.claude/smurf.md`, `docs/specs/`, the
-orchestrator scripts) and scaffolds project-specific stubs only when
-they are missing (`docs/rigor-level.md`, `verify.sh`,
-`.claude/runs/next-goal.md`, `.mcp.json`). It never touches your
-project's `CLAUDE.md`.
+Then point Claude Code at it (via your marketplace setup or
+`~/.claude/plugins.json`). Once it's loaded, every `/smurf:*` slash
+command becomes available.
 
-Smurf's manual lives at `.claude/smurf.md`, not `CLAUDE.md`, so it
-never collides with your project's existing instructions. To inherit
-Smurf's house rules in every Claude Code session (not just Smurf agent
-runs), append `@.claude/smurf.md` to your `CLAUDE.md`.
+Inside your project, scaffold the project-side stubs:
 
-After install: replace the no-op `verify.sh` body with your stack's
-tests, extend `bash_allowlist` and `forbidden_patterns` in
-`.claude/policy.yaml`, then write your first goal to
-`.claude/runs/next-goal.md`.
+```bash
+cd /path/to/your-project
+claude
+> /smurf:init
+```
+
+`/smurf:init` runs `scripts/init-project.sh` and creates only what is
+missing: `verify.sh` (no-op shim), `docs/rigor-level.md` (`prototype`
+by default), `.claude/runs/next-goal.md` (empty), and gitignore lines
+for `.claude/runs/`, `.claude/worktrees/`, `.claude/settings.local.json`.
+Existing files are never overwritten. The host project's `CLAUDE.md`
+is never touched.
+
+After scaffolding:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh"
+```
+
+`doctor.sh` runs 40+ checks split between `[plugin]` (must pass) and
+`[project]` (warnings only). It exits non-zero if the plugin install
+is broken.
+
+Replace the no-op `verify.sh` body with your stack's tests (`npm test`,
+`pytest`, `cargo test`, `mvn verify`, …) and then write your first
+goal to `.claude/runs/next-goal.md`.
 
 ## Operate
 
@@ -42,38 +61,63 @@ Interactive (any time):
 
 ```bash
 claude
-> /kickoff "<your goal>"
+> /smurf:kickoff "<your goal>"
 ```
 
-Autonomous (Phase 5+):
+Autonomous:
 
 ```bash
 echo "<your goal>" > .claude/runs/next-goal.md
-bash scripts/autonomous-run.sh
-# or install cron:
-bash scripts/install-cron.sh
+claude
+> /smurf:nightly-run
 ```
 
-Force Agent-Teams (peer-to-peer wave 3, Phase 6a+):
+Or schedule it from cron:
 
 ```bash
-> /kickoff-team "<goal with parallel features>"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-cron.sh"
 ```
+
+The cron installer is idempotent and uses
+`CLAUDE_PROJECT_DIR=<your project>` plus
+`CLAUDE_PLUGIN_ROOT=<plugin location>` so the headless run resolves
+the plugin correctly.
+
+Force Agent-Teams (peer-to-peer wave 3):
+
+```bash
+> /smurf:kickoff-team "<goal with parallel features>"
+```
+
+Agent Teams mode requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in
+your project's `.claude/settings.local.json`.
 
 ## Configure
 
-- `.claude/smurf.md` — Smurf's operating manual. Hand-written. Don't let an agent rewrite it. Lives under `.claude/` so it never collides with a host project's own `CLAUDE.md`.
-- `.claude/policy.yaml` — every cap and allowlist. Single source of truth.
-- `docs/rigor-level.md` — `prototype` (skip architect+integration QA) or `production`.
-- `verify.sh` — your project's test/build entrypoint. Replace the no-op default.
-- `.mcp.json` — MCP servers. Defaults to `github`; uncomment placeholders as needed.
+- `${CLAUDE_PLUGIN_ROOT}/smurf.md` — Smurf's operating manual.
+  Hand-written. Agents read it at pre-flight from the plugin root.
+  Don't let an agent rewrite it.
+- `${CLAUDE_PLUGIN_ROOT}/policy.yaml` — plugin default caps and
+  allowlists. Single source of truth unless overridden.
+- `.claude/policy.yaml` in your host project — **optional override**.
+  When present, every cap and pattern in it wins over the plugin
+  default. Copy the plugin file as a starting point if you want
+  project-specific allowlists.
+- `docs/rigor-level.md` — `prototype` (skip architect + integration QA)
+  or `production`.
+- `verify.sh` — your project's test/build entrypoint. Replace the no-op
+  default.
+- `.mcp.json` — MCP servers for the project (`github` is the default).
 
 ## Extend
 
-- New project rule? Add a regex to `forbidden_patterns` in `.claude/policy.yaml`.
-- New tooling? Extend `bash_allowlist` in `.claude/policy.yaml`.
-- New role? Drop a `.claude/agents/<name>.md` file with frontmatter + system prompt.
-- New cross-cutting knowledge? Drop a skill at `.claude/skills/<name>/SKILL.md`.
+- New project rule? Add a regex to `forbidden_patterns` in your host's
+  `.claude/policy.yaml` (override).
+- New tooling? Extend `bash_allowlist` in your host's
+  `.claude/policy.yaml`.
+- New role or skill? Contribute it to the plugin: drop
+  `agents/<name>.md` or `skills/<name>/SKILL.md` inside the plugin
+  repo and reinstall.
 
 ## First-run goals (suggestions)
 
@@ -86,16 +130,15 @@ echo "Add scripts/version.sh that prints git rev-parse --short HEAD;
 extend verify.sh so it asserts the script's output is exactly 7 hex chars." \
   > .claude/runs/next-goal.md
 
-# 2. Extend the orchestrator's policy with a new project rule.
+# 2. Tighten the policy with a new project rule.
 echo "Add a forbidden_pattern to .claude/policy.yaml that blocks any
-file containing 'TODO' without a referenced ticket id, then update
-docs/specs/09-hooks-and-policy.md to document the new rule." \
+file containing 'TODO' without a referenced ticket id." \
   > .claude/runs/next-goal.md
 
-# 3. Multi-feature run (use /kickoff-team for parallelism).
+# 3. Multi-feature run (use /smurf:kickoff-team for parallelism).
 echo "Add scripts/version.sh AND scripts/changelog.sh — independent
 features, can be developed in parallel." > .claude/runs/next-goal.md
-MODE=team bash scripts/autonomous-run.sh
+# then in claude:  > /smurf:kickoff-team "implement next-goal.md"
 ```
 
 ## Status
@@ -105,10 +148,10 @@ All 7 phases shipped:
 - Phase 2: full subagent suite + slash commands.
 - Phase 3: 6 hooks + policy.yaml + 13/13 hook smoke tests pass.
 - Phase 4: 5 skills + rigor-level branching.
-- Phase 5: `autonomous-run.sh` + watchdog + `install-cron.sh` + `doctor.sh` (44 checks).
+- Phase 5: `autonomous-run.sh` + watchdog + `install-cron.sh` + `doctor.sh`.
 - Phase 6a: Agent Teams wave-3 with architect-advisor.
 - Phase 6b: OpenRouter shell-out for marketing/sales.
 - Phase 7: `close-loop.py` cross-run feedback + 14 specs.
 
-See `docs/specs/00-overview.md` for the spec index, `docs/operations.md`
-for runbooks, and `docs/research.md` for the research that informed it.
+See `docs/specs/00-overview.md` for the spec index and
+`docs/operations.md` for runbooks.

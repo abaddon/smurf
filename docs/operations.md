@@ -2,6 +2,14 @@
 
 How to run, monitor, and recover the orchestrator.
 
+All script paths below are inside the installed plugin. Use either:
+
+- `/smurf:nightly-run` from an interactive `claude` session (the
+  supported in-session entrypoint), or
+- the underlying shell scripts directly — these require
+  `CLAUDE_PLUGIN_ROOT` to be exported so the plugin scripts can
+  resolve `policy.yaml`, `smurf.md`, and sibling scripts.
+
 ## Daily flow (autonomous)
 
 1. Before you go to bed (or any time before the cron schedule):
@@ -9,7 +17,7 @@ How to run, monitor, and recover the orchestrator.
    echo "Add scripts/version.sh that prints git rev-parse --short HEAD" \
      > .claude/runs/next-goal.md
    ```
-2. Cron at 01:00 fires `scripts/autonomous-run.sh`.
+2. Cron at 01:00 fires `${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-run.sh`.
 3. In the morning, inspect `.claude/runs/<latest>/summary.md`.
 4. If a draft PR exists, review and merge.
 5. The same nightly run produces `docs/feedback/<date>.md` (Phase 7+);
@@ -19,19 +27,19 @@ How to run, monitor, and recover the orchestrator.
 
 ```bash
 echo "<your goal>" > .claude/runs/next-goal.md
-bash scripts/autonomous-run.sh                    # subagent mode
-MODE=team bash scripts/autonomous-run.sh          # Agent Teams mode
-BUDGET_OVERRIDE=2 bash scripts/autonomous-run.sh  # cheap test run
-WATCHDOG_OVERRIDE=10s bash scripts/autonomous-run.sh  # verify SIGTERM trap
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-run.sh"                   # subagent mode
+MODE=team bash "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-run.sh"         # Agent Teams mode
+BUDGET_OVERRIDE=2 bash "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-run.sh" # cheap test run
+WATCHDOG_OVERRIDE=10s bash "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-run.sh" # verify SIGTERM trap
 ```
 
 ## Cron management
 
 ```bash
-bash scripts/install-cron.sh             # install at 01:00 (default)
-bash scripts/install-cron.sh "0 2 * * *" # custom schedule
-bash scripts/install-cron.sh --status    # show current entry
-bash scripts/install-cron.sh --remove    # uninstall
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-cron.sh"             # install at 01:00 (default)
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-cron.sh" "0 2 * * *" # custom schedule
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-cron.sh" --status    # show current entry
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-cron.sh" --remove    # uninstall
 ```
 
 The installer is idempotent — re-running with the same schedule is a
@@ -41,7 +49,7 @@ identifies our line in the crontab.
 ## Health check
 
 ```bash
-bash scripts/doctor.sh
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh"
 ```
 
 Run before the first autonomous run and whenever the system misbehaves.
@@ -68,7 +76,7 @@ trap writes `.claude/runs/<ts>/partial-summary.json` and exits 124.
 Override the watchdog for testing:
 
 ```bash
-WATCHDOG_OVERRIDE=10s bash scripts/autonomous-run.sh
+WATCHDOG_OVERRIDE=10s bash "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-run.sh"
 # expect: rc=124, partial-summary.json present
 ```
 
@@ -92,7 +100,7 @@ If Anthropic is degraded, redirect via OpenRouter Anthropic Skin:
 export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
 export ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY"
 unset ANTHROPIC_API_KEY
-bash scripts/autonomous-run.sh
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/autonomous-run.sh"
 ```
 
 The autonomous-run script honors `ANTHROPIC_BASE_URL` if exported. Note:
@@ -118,7 +126,7 @@ first-party provider — non-Anthropic models may break tool-use.
 | Run exits at < 1 minute, empty `summary.md` | Pre-flight failure or bad `next-goal.md` | Check `.claude/runs/<ts>/run.err`. |
 | Run hits budget cap | Goal too ambitious for `prototype` rigor | Split goal; OR set `production` rigor and use `MODE=team`. |
 | QA loop never ends | `max_qa_iterations` cap not enforced | Inspect `summary.md` for `qa_iterations` field; raise `policy.yaml` if intentional. |
-| Cron not firing | Wrong crontab user, or `claude` not on PATH for cron's environment | `bash scripts/install-cron.sh --status`; ensure cron uses `bash -lc` (the installer does) so login env is loaded. |
+| Cron not firing | Wrong crontab user, or `claude` not on PATH for cron's environment | `bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-cron.sh" --status`; ensure cron uses `bash -lc` (the installer does) so login env is loaded. |
 | Hook blocks normal dev work | `bash_allowlist` too tight | Edit `policy.yaml` (broaden) or add personal override in `.claude/settings.local.json`. |
 | Orchestrator skips the architect wave despite `production` rigor | Stale `docs/rigor-level.md` content | `cat docs/rigor-level.md` (must literally be `production`); restart run. |
 
@@ -132,7 +140,7 @@ Escalations are not failures — they're the system saying "this needs a
 human". Read the escalation note and either:
 - approve manually (commit the change yourself),
 - refine the goal so the agent doesn't need to escalate,
-- adjust the `ESCALATION` rules in `.claude/smurf.md` if they're too tight.
+- adjust the `ESCALATION` rules in `${CLAUDE_PLUGIN_ROOT}/smurf.md` if they're too tight (note: this edits the plugin itself — propose via PR rather than in-place).
 
 ## Cost dashboard (manual)
 
