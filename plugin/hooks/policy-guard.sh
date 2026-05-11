@@ -40,11 +40,20 @@ if [ ! -f "$POLICY" ]; then
 fi
 
 # Forbidden paths — glob style.
+# Use while-read loops instead of `mapfile` for bash 3.2 (macOS default) compatibility.
+FORBID_PATHS=()
+FORBID_PATTERNS=()
 if command -v yq >/dev/null 2>&1; then
-  mapfile -t FORBID_PATHS < <(yq -r '.forbidden_paths[]' "$POLICY" 2>/dev/null)
-  mapfile -t FORBID_PATTERNS < <(yq -r '.forbidden_patterns[]' "$POLICY" 2>/dev/null)
+  while IFS= read -r line; do
+    FORBID_PATHS+=("$line")
+  done < <(yq -r '.forbidden_paths[]' "$POLICY" 2>/dev/null)
+  while IFS= read -r line; do
+    FORBID_PATTERNS+=("$line")
+  done < <(yq -r '.forbidden_patterns[]' "$POLICY" 2>/dev/null)
 else
-  mapfile -t FORBID_PATHS < <(awk '
+  while IFS= read -r line; do
+    FORBID_PATHS+=("$line")
+  done < <(awk '
     /^forbidden_paths:/ {in_list=1; next}
     in_list && /^[a-zA-Z]/ {in_list=0}
     in_list && /^[[:space:]]+-[[:space:]]/ {
@@ -53,7 +62,9 @@ else
       print
     }
   ' "$POLICY")
-  mapfile -t FORBID_PATTERNS < <(awk '
+  while IFS= read -r line; do
+    FORBID_PATTERNS+=("$line")
+  done < <(awk '
     /^forbidden_patterns:/ {in_list=1; next}
     in_list && /^[a-zA-Z]/ {in_list=0}
     in_list && /^[[:space:]]+-[[:space:]]/ {
@@ -90,21 +101,26 @@ glob_to_regex() {
   printf '^%s$' "$re"
 }
 
-for glob in "${FORBID_PATHS[@]}"; do
-  re=$(glob_to_regex "$glob")
-  if [[ "$REL_FILE" =~ $re ]] || [[ "$FILE" =~ $re ]]; then
-    echo "BLOCKED by policy-guard: write to '$FILE' matches forbidden_paths pattern '$glob'" >&2
-    exit 2
-  fi
-done
+# Size guards: bash 3.2 (macOS default) errors on iterating an empty array under `set -u`.
+if [ "${#FORBID_PATHS[@]}" -gt 0 ]; then
+  for glob in "${FORBID_PATHS[@]}"; do
+    re=$(glob_to_regex "$glob")
+    if [[ "$REL_FILE" =~ $re ]] || [[ "$FILE" =~ $re ]]; then
+      echo "BLOCKED by policy-guard: write to '$FILE' matches forbidden_paths pattern '$glob'" >&2
+      exit 2
+    fi
+  done
+fi
 
 # Forbidden content patterns (regex; matched against new content).
-for pat in "${FORBID_PATTERNS[@]}"; do
-  [ -z "$pat" ] && continue
-  if printf '%s' "$CONTENT" | grep -qE "$pat"; then
-    echo "BLOCKED by policy-guard: content of '$FILE' matches forbidden_patterns regex '$pat'" >&2
-    exit 2
-  fi
-done
+if [ "${#FORBID_PATTERNS[@]}" -gt 0 ]; then
+  for pat in "${FORBID_PATTERNS[@]}"; do
+    [ -z "$pat" ] && continue
+    if printf '%s' "$CONTENT" | grep -qE "$pat"; then
+      echo "BLOCKED by policy-guard: content of '$FILE' matches forbidden_patterns regex '$pat'" >&2
+      exit 2
+    fi
+  done
+fi
 
 exit 0

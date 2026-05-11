@@ -56,11 +56,17 @@ if [ ! -f "$POLICY" ]; then
 fi
 
 # Read allowlist via yq if available, else minimal awk fallback.
+# Use a while-read loop instead of `mapfile` for bash 3.2 (macOS default) compatibility.
+PATTERNS=()
 if command -v yq >/dev/null 2>&1; then
-  mapfile -t PATTERNS < <(yq -r '.bash_allowlist[]' "$POLICY" 2>/dev/null)
+  while IFS= read -r line; do
+    PATTERNS+=("$line")
+  done < <(yq -r '.bash_allowlist[]' "$POLICY" 2>/dev/null)
 else
   # Fallback: parse "  - \"...\"" lines under bash_allowlist:
-  mapfile -t PATTERNS < <(awk '
+  while IFS= read -r line; do
+    PATTERNS+=("$line")
+  done < <(awk '
     /^bash_allowlist:/ {in_list=1; next}
     in_list && /^[a-zA-Z]/ {in_list=0}
     in_list && /^[[:space:]]+-[[:space:]]/ {
