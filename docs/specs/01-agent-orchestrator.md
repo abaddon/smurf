@@ -47,6 +47,14 @@ Plan-mode output is a markdown table with columns: `wave | worker | model
 | est-turns | est-cost`. Total est-cost must not exceed
 `budget_usd_subagent` (or `budget_usd_team` in `/kickoff-team`).
 
+Wave 1 is interactive-capable: the `product-owner` may pause and call
+`AskUserQuestion` one or more times before drafting stories (see
+`02-agent-product-owner.md` → Clarify before drafting). The orchestrator
+treats these pauses as part of normal wave-1 execution, not as failures.
+Each round is logged as `wave-1 clarify round=<n> questions=<count>` to
+`.claude/runs/<ts>/orchestrator.log`. Wave 2 only starts once the PO
+returns its final story summary table.
+
 ## Iteration rule (intra-orchestrator)
 
 ```

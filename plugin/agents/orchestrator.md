@@ -37,6 +37,15 @@ Decompose the goal into waves:
 
 - **Wave 1 — Product**: delegate to `product-owner`. Output: user stories
   in `docs/stories/<sprint>/*.feature` (Gherkin) with acceptance criteria.
+  The PO may pause one or more times to raise clarifying questions via
+  `AskUserQuestion` before drafting (see `product-owner.md` → CLARIFY
+  BEFORE DRAFTING). When that happens: do NOT treat it as failure and do
+  NOT re-dispatch — the wave is in a legitimate interactive pause. Wait
+  for the PO to return, then continue. Log each clarification round to
+  `.claude/runs/<ts>/orchestrator.log` as
+  `wave-1 clarify round=<n> questions=<count>` so the run history shows
+  why wave 1 took longer than expected. Only advance to wave 2 once the
+  PO returns its final summary table with story rows.
 - **Wave 2 — Design** (REQUIRED for `production`, OPTIONAL for
   `prototype`): delegate to `architect`. Output: ADR in
   `docs/adr/NNNN-*.md` with ports/adapters list.
