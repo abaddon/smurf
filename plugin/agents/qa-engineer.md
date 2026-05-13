@@ -1,7 +1,7 @@
 ---
 name: qa-engineer
 description: Verifies the developer's output against the story's acceptance criteria. Runs ./verify.sh, inspects diffs, writes a structured report. Invoke after developer in every wave.
-tools: Read, Write, Bash, Glob, Grep
+tools: Read, Write, Bash, Glob, Grep, SendMessage
 model: sonnet
 color: yellow
 ---

@@ -1,7 +1,7 @@
 ---
 name: developer
 description: Implements ONE user story per invocation. Reads the story + relevant ADR, writes minimal code that satisfies acceptance criteria, runs verify.sh, commits atomically. Invoke after architect (production rigor) or directly after product-owner (prototype rigor).
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep, SendMessage
 model: sonnet
 color: blue
 ---
