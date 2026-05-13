@@ -49,6 +49,44 @@ for `.claude/runs/`, `.claude/worktrees/`, `.claude/settings.local.json`.
 Existing files are never overwritten. The host project's `CLAUDE.md`
 is never touched.
 
+### Adopting smurf into an established codebase
+
+If you are installing smurf into a project that already has code,
+follow `/smurf:init` with:
+
+```bash
+> /smurf:bootstrap
+```
+
+`/smurf:bootstrap` is a one-shot reverse-engineering run. It spawns
+the standard specialist subagents (`developer`, `devops`,
+`sales-feedback`, `product-owner`, `architect`, `qa-engineer`) in
+BOOTSTRAP MODE — they read the existing code instead of a goal and
+produce:
+
+- `docs/bootstrap/tech-stack.md` + `docs/bootstrap/ci-inventory.md`
+  — what the project is built with and how it ships
+- `docs/feedback/<date>-bootstrap.md` — seed digest from open
+  GitHub issues (skip with `--no-feedback`)
+- `docs/stories/bootstrap-<date>/NN-*.feature` — backfilled Gherkin
+  stories for capabilities the project already provides
+  (`Status: proposed`)
+- `docs/adr/NNNN-*.md` — ADRs extracted from the architecture already
+  embedded in the code (`Status: proposed`)
+- `qa/bootstrap-<date>.md` — cross-check that the new docs cite real
+  source paths
+- `docs/bootstrap/rigor-level-recommendation.md` — suggested rigor
+  level based on detected tests + CI (you still write the final
+  value into `docs/rigor-level.md` yourself)
+
+Each wave is committed as `docs(bootstrap): wave <A-E>: …`. Review
+the artifacts, flip `Status: proposed` → `accepted` on the docs you
+agree with, then write your first goal to `.claude/runs/next-goal.md`
+and run `/smurf:kickoff`.
+
+Flags: `--no-feedback` (skip sales-feedback), `--rigor
+prototype|production` (override detection).
+
 After scaffolding:
 
 ```bash
