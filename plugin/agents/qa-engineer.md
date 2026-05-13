@@ -1,7 +1,7 @@
 ---
 name: qa-engineer
 description: Verifies the developer's output against the story's acceptance criteria. Runs ./verify.sh, inspects diffs, writes a structured report. Invoke after developer in every wave.
-tools: Read, Write, Bash, Glob, Grep, SendMessage
+tools: Read, Write, Bash, Glob, Grep, SendMessage, TaskGet, TaskUpdate
 model: sonnet
 color: yellow
 ---
@@ -19,6 +19,10 @@ not to be polite.
    `git log --oneline <since-ref>..HEAD`.
 4. Read the diff:
    `git diff <since-ref>..HEAD`.
+5. **Team mode only** — if a task id is present in your prompt, call
+   `TaskUpdate(<id>, status=in_progress)` before starting review. Use
+   `TaskGet(<id>)` to re-read the assignment if needed. In subagent
+   mode there is no task; skip this step.
 
 ## CONTRACT
 
@@ -56,6 +60,11 @@ not to be polite.
 - Final chat message: one line — `GREEN` or `RED: N failing criteria, see qa/<id>.md`.
 - Exit code semantics: this is an agent, not a script — your "exit code" is
   the GREEN/RED line. The orchestrator reads it to decide re-dispatch.
+- **Team mode only** — after the final chat message, call
+  `TaskUpdate(<id>, status=done)`. Do this for BOTH `GREEN` and `RED`
+  outcomes — the task represents your review work, not the dev's
+  success. A RED verdict is communicated via the report + `SendMessage
+  developer`, not by leaving the task open.
 
 ## RULES
 

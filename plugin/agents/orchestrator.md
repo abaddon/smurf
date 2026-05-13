@@ -58,11 +58,17 @@ Decompose the goal into waves:
     with the roster `developer × N + qa-engineer × 1 + architect × 1`
     where the architect runs as **architect-advisor** (idle, replies
     only to `SendMessage`, max 8 turns, never edits files — see
-    `architect.md` advisor branch). Distribute stories via `TaskCreate`.
-    Developers may `SendMessage architect-advisor` for design Q&A;
-    qa-engineer may `SendMessage developer` with failure detail. When
-    all tasks reach `done`, `Teammate.cleanup`. Use the `budget_usd_team`
-    tier from `policy.yaml`.
+    `architect.md` advisor branch). Distribute stories via `TaskCreate`:
+    one task per story, assigned to a specific developer, with the task
+    body containing the absolute story file path plus any ADR refs the
+    dev needs. The assignee reads the task body as its invocation prompt
+    and is responsible for calling `TaskUpdate` to transition
+    `pending` → `in_progress` (on start) → `done` (on completion). The
+    orchestrator does NOT flip task status on assignees' behalf — it
+    only observes. Developers may `SendMessage architect-advisor` for
+    design Q&A; qa-engineer may `SendMessage developer` with failure
+    detail. When all tasks reach `done`, `Teammate.cleanup`. Use the
+    `budget_usd_team` tier from `policy.yaml`.
 
   `Teammate`/`SendMessage`/`Task*` tools are auto-available when
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set in the user's
