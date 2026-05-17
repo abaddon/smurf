@@ -152,9 +152,14 @@ so the file is identifiable. Limit yourself to:
 All other rules in your default CONTRACT apply.
 ```
 
-After A1–A3 return, commit:
-`docs(bootstrap): wave A — tech-stack, CI, and feedback seed`
-(only add files that were actually written).
+After A1–A3 return, stage and commit (three separate Bash calls —
+no compound commands):
+
+1. `git add docs/bootstrap/tech-stack.md docs/bootstrap/ci-inventory.md`
+   (omit any path the corresponding subagent did NOT write). If A3 ran
+   and produced `docs/feedback/<today>-bootstrap.md`, add that too.
+2. `git commit -m "docs(bootstrap): wave A — tech-stack, CI, and feedback seed"`
+3. `git status` (sanity).
 
 ### Wave B — Backfill user stories
 
@@ -305,8 +310,12 @@ the codebase is too ambiguous for automated extraction and a human
 must triage.
 
 After QA returns GREEN (or after the single re-dispatch lands
-GREEN), commit:
-`docs(bootstrap): wave D — QA cross-check`
+GREEN), stage and commit (three separate Bash calls):
+
+1. `git add qa/bootstrap-<YYYY-MM-DD>.md` (substitute the actual date
+   slug used in the QA prompt).
+2. `git commit -m "docs(bootstrap): wave D — QA cross-check"`
+3. `git status` (sanity).
 
 ### Wave E — Recommendations (you, the orchestrator, do this directly)
 
@@ -336,8 +345,14 @@ No subagent. Using the signals from step 0.4 and the wave outputs:
      first goal to `.claude/runs/next-goal.md` and run
      `/smurf:kickoff`."
 
-Commit:
-`docs(bootstrap): wave E — recommendations and summary`
+Stage and commit (three separate Bash calls; do NOT add
+`.claude/runs/<run-id>/summary.md` — `.claude/runs/` is gitignored):
+
+1. `git add docs/bootstrap/rigor-level-recommendation.md`. If
+   `docs/bootstrap/policy-override-suggested.yaml` was written in
+   step 2, add that path too in the same `git add` call.
+2. `git commit -m "docs(bootstrap): wave E — recommendations and summary"`
+3. `git status` (sanity).
 
 ### Wave F — Index the bootstrap artifacts (you, the orchestrator, do this directly)
 
@@ -360,14 +375,20 @@ Issue these Bash calls in order — one per call, no compound commands:
    `--status bootstrap` `--pr-url -` `--head-sha "$(git rev-parse --short HEAD)"`
    (one Bash call; arguments shown across lines for readability)
 
-Then commit-only-if-changed using three separate Bash calls:
+Then commit-only-if-changed using three separate Bash calls. We use
+`git diff --cached --name-only` (which always exits 0 — printing
+staged paths or nothing) instead of `git diff --cached --quiet`
+(which uses exit code 1 as a sentinel and shows up as `Error: Exit
+code 1` in the transcript):
 
 3. `git add docs/wiki/index.md docs/wiki/log.md`
-4. `git diff --cached --quiet`
-5. If step 4 exited non-zero → `git commit -m "docs(bootstrap): wave F — index artifacts"`.
-   Otherwise `git reset HEAD` to unstage and skip the commit (the
-   indexer is idempotent — if it ran inside a re-run with nothing
-   new to index, there's nothing to commit).
+4. `git diff --cached --name-only docs/wiki/index.md docs/wiki/log.md`
+5. If step 4 printed any path (non-empty stdout), run
+   `git commit -m "docs(bootstrap): wave F — index artifacts"`.
+   Otherwise run `git reset HEAD docs/wiki/index.md docs/wiki/log.md`
+   to unstage and skip the commit (the indexer is idempotent — if it
+   ran inside a re-run with nothing new to index, there's nothing to
+   commit).
 
 Do NOT run `wiki_lint.py` in bootstrap — wave D already cite-checks
 the bootstrap-scoped artifacts; running lint at project scope here

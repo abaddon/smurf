@@ -94,12 +94,16 @@ Decompose the goal into waves:
   script is deterministic and idempotent — it overwrites
   `docs/wiki/index.md` only when content actually changed. After it
   returns, commit-only-if-changed using three separate Bash calls (no
-  compound commands):
+  compound commands). We use `git diff --cached --name-only` (which
+  always exits 0 — printing staged paths or nothing) instead of
+  `git diff --cached --quiet` (which uses exit code 1 as a sentinel
+  and surfaces as `Error: Exit code 1` in the transcript):
   1. `git add docs/wiki/index.md`
-  2. `git diff --cached --quiet docs/wiki/index.md`  (exit 1 = changes staged)
-  3. If step 2 exited non-zero, `git commit -m "docs(wiki): refresh index"`.
-     Otherwise `git reset HEAD docs/wiki/index.md` to unstage and skip
-     the commit.
+  2. `git diff --cached --name-only docs/wiki/index.md`
+  3. If step 2 printed any path (non-empty stdout), run
+     `git commit -m "docs(wiki): refresh index"`. Otherwise run
+     `git reset HEAD docs/wiki/index.md` to unstage and skip the
+     commit.
 
   Wave 7 is identical in `/kickoff` and `/kickoff-team`. It runs in
   your (the orchestrator's) main session — never as a teammate. It
