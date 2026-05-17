@@ -155,6 +155,23 @@ your project's `.claude/settings.local.json`.
   default.
 - `.mcp.json` — MCP servers for the project (`github` is the default).
 
+### Wiki layer
+
+Enabled by default (`wiki.enabled: true` in `policy.yaml`). On every
+run, smurf:
+
+- regenerates `docs/wiki/index.md` (wave 7) — a topic-bucketed index
+  of ADRs, stories, and feedback that product-owner and architect
+  read at pre-flight in the next run;
+- appends one row to `docs/wiki/log.md` — append-only audit trail
+  (committed; survives gitignored `.claude/runs/`);
+- on each `close-loop`, writes `docs/wiki/health.md` with cite-check,
+  port-conflict, and orphan-story findings. A missing cite on a
+  `Status: accepted` ADR is a **FAIL** (close-loop exits 2).
+
+See `docs/specs/15-wiki.md`. To opt out, set `wiki.enabled: false` in
+your project's `.claude/policy.yaml`.
+
 ## Extend
 
 - New project rule? Add a regex to `forbidden_patterns` in your host's

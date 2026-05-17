@@ -32,7 +32,14 @@ For wave 3 specifically:
    than subagent-mode budget — Agent Teams burn 7-15× tokens per
    research §1.7).
 
-All other waves (1, 2, 4, 5) remain subagent mode.
+All other waves (1, 2, 4, 5, 6, 7) remain subagent mode.
+
+Wave 7 (regenerate `docs/wiki/index.md`) runs at the end in the
+orchestrator's main session — never as a teammate. It indexes what has
+landed on the project's main branch by that point. Worktree-side
+commits that have not yet merged are intentionally invisible: the
+index reflects ground truth, not in-flight work. See
+`docs/specs/15-wiki.md`.
 
 Apply caps from project's `.claude/policy.yaml` (override) or the plugin
 default at `${CLAUDE_PLUGIN_ROOT}/policy.yaml`. Branch on

@@ -88,14 +88,36 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def run_wiki_lint() -> int:
+    """Invoke wiki_lint.py in-process. Returns its exit code (0 or 2)."""
+    here = Path(__file__).resolve().parent
+    lint_script = here / "wiki_lint.py"
+    if not lint_script.is_file():
+        return 0  # no lint script means feature not deployed; not an error
+    try:
+        return subprocess.run(
+            [sys.executable, str(lint_script)],
+            cwd=PROJECT_ROOT,
+            env=os.environ.copy(),
+        ).returncode
+    except Exception as exc:  # noqa: BLE001
+        print(f"[close-loop] wiki_lint invocation failed: {exc}", file=sys.stderr)
+        return 0  # don't let lint errors mask the rest of close-loop
+
+
 def main() -> int:
     args = parse_args()
     today = dt.date.today().isoformat()
     out_path = FEEDBACK_DIR / f"{today}.md"
 
+    # Wiki lint runs first (cheap, deterministic, no network). Its FAIL
+    # exit propagates to our own exit at the end. We do NOT abort the
+    # LLM digest on lint findings — both artifacts are useful.
+    lint_rc = run_wiki_lint()
+
     if out_path.exists() and not args.force:
-        print(f"[close-loop] {out_path} already exists; skipping (use --force to overwrite)")
-        return 0
+        print(f"[close-loop] {out_path} already exists; skipping LLM digest (use --force to overwrite)")
+        return 2 if lint_rc == 2 else 0
 
     FEEDBACK_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -103,7 +125,7 @@ def main() -> int:
 
     if args.dry_run:
         print(prompt)
-        return 0
+        return 2 if lint_rc == 2 else 0
 
     if shutil.which("claude") is None:
         print("[close-loop] ERROR: 'claude' not on PATH", file=sys.stderr)
@@ -128,7 +150,7 @@ def main() -> int:
         print(f"[close-loop] WARNING: claude exited 0 but {out_path} was not written", file=sys.stderr)
         # Don't fail hard — the run still produced something.
 
-    return 0
+    return 2 if lint_rc == 2 else 0
 
 
 if __name__ == "__main__":

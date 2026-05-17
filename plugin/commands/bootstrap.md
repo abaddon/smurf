@@ -327,7 +327,7 @@ No subagent. Using the signals from step 0.4 and the wave outputs:
    write `.claude/policy.yaml` directly.
 3. Write `.claude/runs/<run-id>/summary.md` with:
    - the goal: "bootstrap smurf in an existing project"
-   - waves executed (A, B, C, D, E) with one line each
+   - waves executed (A, B, C, D, E, F) with one line each
    - counts: stories created, ADRs created, QA verdict
    - recommended rigor level + path to the recommendation file
    - any escalation notes
@@ -338,6 +338,43 @@ No subagent. Using the signals from step 0.4 and the wave outputs:
 
 Commit:
 `docs(bootstrap): wave E — recommendations and summary`
+
+### Wave F — Index the bootstrap artifacts (you, the orchestrator, do this directly)
+
+The bootstrap just produced ADRs, stories, and a feedback file —
+exactly what `build-wiki-index.py` scans. Without this wave, the
+wiki index stays empty until the user's first `/smurf:kickoff`. Run
+it now so the user has a populated `docs/wiki/` to navigate
+immediately.
+
+Skip this wave entirely if `wiki.enabled: false` in the resolved
+policy (project override or plugin default).
+
+Issue these Bash calls in order — one per call, no compound commands:
+
+1. `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build-wiki-index.py"`
+2. `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/append-wiki-log.py"
+   `--ts "<run-id>"` (the `bootstrap-<ts>` value from step 0.5)
+   `--goal "bootstrap smurf in existing project"`
+   `--waves "A,B,C,D,E,F"` `--qa-iterations 0`
+   `--status bootstrap` `--pr-url -` `--head-sha "$(git rev-parse --short HEAD)"`
+   (one Bash call; arguments shown across lines for readability)
+
+Then commit-only-if-changed using three separate Bash calls:
+
+3. `git add docs/wiki/index.md docs/wiki/log.md`
+4. `git diff --cached --quiet`
+5. If step 4 exited non-zero → `git commit -m "docs(bootstrap): wave F — index artifacts"`.
+   Otherwise `git reset HEAD` to unstage and skip the commit (the
+   indexer is idempotent — if it ran inside a re-run with nothing
+   new to index, there's nothing to commit).
+
+Do NOT run `wiki_lint.py` in bootstrap — wave D already cite-checks
+the bootstrap-scoped artifacts; running lint at project scope here
+would emit FAIL on the same legitimately-broken cites the bootstrap
+is supposed to surface (pre-existing accepted-ADR-equivalents the
+bootstrap promoted from code). Lint runs on its normal cadence via
+`/smurf:close-loop`.
 
 ## 2. Guardrails
 
@@ -350,7 +387,8 @@ Commit:
   project's tests may not even pass right now and that is fine.
 - NEVER spawn more than `max_parallel_subagents` workers (relevant
   only for wave A's parallel fan-out).
-- NEVER push, NEVER open a PR. Bootstrap is a local operation.
+- NEVER push, NEVER open a PR. Bootstrap is a local operation —
+  wave F's `git commit` is local-only.
 
 ## 3. Argument handling
 

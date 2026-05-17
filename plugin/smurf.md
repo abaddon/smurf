@@ -38,8 +38,22 @@ Current keys:
 - `max_parallel_subagents`, `max_turns_orchestrator`, `max_turns_subagent`
 - `budget_usd_subagent`, `budget_usd_team`, `max_qa_iterations`
 - `bash_allowlist`, `forbidden_paths`, `forbidden_patterns`, `verify_command`
+- `wiki.{enabled,index_path,log_path,health_path,lint_orphan_days}` — see
+  `docs/specs/15-wiki.md`. When `wiki.enabled: true` (the shipped default),
+  wave 7 regenerates the index, every run appends a row to the log, and
+  `close-loop.py` writes a lint health report.
 
 Edit `policy.yaml`, never hard-code numbers in agent prompts or scripts.
+
+## WIKI ETIQUETTE
+
+Agents do NOT speculatively author or edit anything under `docs/wiki/`.
+That directory is owned by three scripts (`build-wiki-index.py`,
+`append-wiki-log.py`, `wiki_lint.py`) and the orchestrator's wave 7. The
+product-owner and architect READ `docs/wiki/index.md` and
+`docs/wiki/health.md` at pre-flight; nobody else reads them and nobody
+writes them by hand. This is consistent with house rule #3 (touch only
+what you must).
 
 ## PRE-FLIGHT (every agent, every run)
 

@@ -87,6 +87,25 @@ Decompose the goal into waves:
   to prod without human approval.
 - **Wave 6 — Promote**: delegate to `marketing` (release notes) and
   `sales-feedback` (data summary, optional).
+- **Wave 7 — Index** (REQUIRED when `wiki.enabled: true` in the resolved
+  policy — the shipped default; SKIPPED when `wiki.enabled: false`):
+  no subagent. Issue one Bash call:
+  `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build-wiki-index.py"`. The
+  script is deterministic and idempotent — it overwrites
+  `docs/wiki/index.md` only when content actually changed. After it
+  returns, commit-only-if-changed using three separate Bash calls (no
+  compound commands):
+  1. `git add docs/wiki/index.md`
+  2. `git diff --cached --quiet docs/wiki/index.md`  (exit 1 = changes staged)
+  3. If step 2 exited non-zero, `git commit -m "docs(wiki): refresh index"`.
+     Otherwise `git reset HEAD docs/wiki/index.md` to unstage and skip
+     the commit.
+
+  Wave 7 is identical in `/kickoff` and `/kickoff-team`. It runs in
+  your (the orchestrator's) main session — never as a teammate. It
+  indexes whatever has landed on the project's main branch by this
+  point. Worktree-side commits not yet merged are intentionally
+  invisible (see the kickoff-team docs).
 
 State the rigor-level branch decision verbatim in your plan-mode output:
 "rigor=production → architect + integration QA enabled" or
@@ -120,6 +139,9 @@ If `qa-engineer` reports red:
   `escalation.md`, and `summary.md` there per the OUTPUT CONTRACT below.
 - NEVER bypass `./verify.sh` before declaring a wave complete.
 - NEVER spawn more than `max_parallel_subagents` workers.
+- NEVER write directly to anything under `docs/wiki/` (see WIKI ETIQUETTE
+  in `${CLAUDE_PLUGIN_ROOT}/smurf.md`). The wiki is owned by three
+  scripts; you only invoke them via Bash.
 - ALWAYS write a final summary to `.claude/runs/<ts>/summary.md` with:
   goal, waves executed, qa_iterations, files changed, cost estimate.
 
@@ -130,3 +152,20 @@ If `qa-engineer` reports red:
 - Per-wave: short status line in chat + one-line append to
   `.claude/runs/<ts>/orchestrator.log`.
 - Final: `.claude/runs/<ts>/summary.md` (always, even on failure).
+- Final (if `wiki.enabled: true`): exactly one row appended to
+  `docs/wiki/log.md` via:
+  ```
+  python3 "${CLAUDE_PLUGIN_ROOT}/scripts/append-wiki-log.py" \
+      --ts "<ts>" --goal "<one-line goal>" \
+      --waves "<comma-separated wave numbers actually executed>" \
+      --qa-iterations <n> --status "<green|red|escalated>" \
+      --pr-url "<url or ->" --head-sha "<short sha or ->"
+  ```
+  The script is idempotent on `<ts>`; running it twice for the same run
+  is a no-op. After the script returns, stage and commit with
+  `docs(wiki): log run <ts>` (three separate Bash calls — no `&&`):
+  `git add docs/wiki/log.md`, `git commit -m "docs(wiki): log run <ts>"`,
+  `git status` (sanity).
+- ESCALATION (after writing `.claude/runs/<ts>/escalation.md`): append
+  the log row with `--status escalated` BEFORE exiting. The same
+  three-call commit sequence applies.

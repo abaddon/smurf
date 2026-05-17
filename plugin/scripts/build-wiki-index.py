@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""Regenerate docs/wiki/index.md from docs/adr/, docs/stories/, docs/feedback/.
+
+Deterministic. Filename-derived topic slugs. Two consecutive runs on
+identical inputs produce byte-identical output.
+
+Topic-slug rules:
+    - ADR file `NNNN-<slug>.md`  → topic = <slug>
+    - Story file `NN-<slug>.feature` → topic = <slug>
+    - Feedback file `YYYY-MM-DD[-<suffix>].md` → topic = `feedback-<date>`
+
+Cross-links between ADRs and stories use the explicit `Stories:` field
+in the ADR header and the `Source:` block in the story's trailing
+markdown. Cross-links are emitted on both sides so the index is
+symmetric.
+
+The script is read-only on docs/adr/, docs/stories/, docs/feedback/.
+It writes docs/wiki/index.md (or whatever wiki.index_path resolves to)
+and returns:
+    0  index written, or unchanged (idempotent)
+    0  wiki.enabled=false (no-op)
+    1  IO / parsing error
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import sys
+from pathlib import Path
+from typing import Iterable
+
+PROJECT_ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
+PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", Path(__file__).resolve().parent.parent))
+
+
+def load_policy() -> dict:
+    candidates = [PROJECT_ROOT / ".claude" / "policy.yaml", PLUGIN_ROOT / "policy.yaml"]
+    for p in candidates:
+        if p.is_file():
+            try:
+                import yaml  # type: ignore
+                return yaml.safe_load(p.read_text()) or {}
+            except ImportError:
+                return _minimal_yaml(p.read_text())
+    return {}
+
+
+def _minimal_yaml(text: str) -> dict:
+    wiki: dict = {}
+    in_wiki = False
+    for raw in text.splitlines():
+        if raw.startswith("wiki:"):
+            in_wiki = True
+            continue
+        if in_wiki:
+            if raw and not raw.startswith(("  ", "\t")):
+                break
+            if ":" in raw:
+                k, _, v = raw.strip().partition(":")
+                v = v.strip().strip('"').strip("'")
+                if v.lower() in ("true", "false"):
+                    wiki[k] = v.lower() == "true"
+                elif v.isdigit():
+                    wiki[k] = int(v)
+                elif v:
+                    wiki[k] = v
+    return {"wiki": wiki}
+
+
+# ---------------- parsing helpers ----------------
+
+ADR_RE = re.compile(r"^(\d{4})-(.+)\.md$")
+STORY_RE = re.compile(r"^(\d+)-(.+)\.feature$")
+FEEDBACK_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:-.+)?\.md$")
+
+
+def parse_adr(path: Path) -> dict:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    head = text.splitlines()
+    title = ""
+    status = "unknown"
+    stories: list[str] = []
+    for line in head[:20]:
+        if line.startswith("# ADR-"):
+            title = line[2:].strip()
+        m_status = re.match(r"\*\*Status\*\*:\s*(.+?)(?:\s*$)", line)
+        if m_status:
+            status = m_status.group(1).strip().split()[0]
+        m_stories = re.match(r"\*\*Stories\*\*:\s*(.+)$", line)
+        if m_stories:
+            stories = [s.strip() for s in m_stories.group(1).split(",") if s.strip()]
+    m_file = ADR_RE.match(path.name)
+    number = m_file.group(1) if m_file else "????"
+    slug = m_file.group(2) if m_file else path.stem
+    return {
+        "kind": "adr",
+        "number": number,
+        "slug": slug,
+        "title": title or f"ADR-{number}",
+        "status": status,
+        "stories": stories,
+        "path": str(path.relative_to(PROJECT_ROOT)),
+    }
+
+
+def parse_story(path: Path) -> dict:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    title = ""
+    status = "unknown"
+    priority = "unknown"
+    sources: list[str] = []
+    in_source = False
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        if line.startswith("Feature:"):
+            title = line[len("Feature:"):].strip()
+        if line.lower().startswith("## status"):
+            for follow in text.splitlines()[text.splitlines().index(raw) + 1:]:
+                f = follow.strip()
+                if not f:
+                    continue
+                if f.startswith("- "):
+                    status = f[2:].strip().split()[0]
+                break
+        m_prio = re.match(r"^- MoSCoW:\s*(\S+)", line)
+        if m_prio:
+            priority = m_prio.group(1)
+        if line.lower().startswith("## source"):
+            in_source = True
+            continue
+        if in_source:
+            if line.startswith("## "):
+                in_source = False
+                continue
+            m = re.match(r"^- (?:feedback|linked stories|source):\s*(.+)$", line, re.IGNORECASE)
+            if m:
+                val = m.group(1).strip()
+                if val and val.lower() not in ("goal", "bootstrap"):
+                    sources.append(val)
+    m_file = STORY_RE.match(path.name)
+    seq = m_file.group(1) if m_file else "??"
+    slug = m_file.group(2) if m_file else path.stem
+    sprint = path.parent.name
+    return {
+        "kind": "story",
+        "id": f"{sprint}/{seq}-{slug}",
+        "seq": seq,
+        "slug": slug,
+        "sprint": sprint,
+        "title": title or slug,
+        "status": status,
+        "priority": priority,
+        "sources": sources,
+        "path": str(path.relative_to(PROJECT_ROOT)),
+    }
+
+
+def parse_feedback(path: Path) -> dict:
+    m_file = FEEDBACK_RE.match(path.name)
+    date = m_file.group(1) if m_file else path.stem
+    headings = []
+    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if raw.startswith("## "):
+            headings.append(raw[3:].strip())
+    return {
+        "kind": "feedback",
+        "date": date,
+        "topic": f"feedback-{date}",
+        "headings": headings[:5],
+        "path": str(path.relative_to(PROJECT_ROOT)),
+    }
+
+
+# ---------------- render ----------------
+
+def render(adrs: list[dict], stories: list[dict], feedback: list[dict]) -> str:
+    out: list[str] = []
+    out.append("# Smurf — wiki index")
+    out.append("")
+    out.append("Auto-generated by `scripts/build-wiki-index.py`. Do not hand-edit.")
+    out.append("Topic slugs are filename-derived. See `docs/specs/15-wiki.md`.")
+    out.append("")
+    out.append(f"Counts: ADRs={len(adrs)} stories={len(stories)} feedback={len(feedback)}")
+    out.append("")
+
+    out.append("## ADRs")
+    out.append("")
+    if not adrs:
+        out.append("_none_")
+    else:
+        out.append("| number | slug | title | status | stories |")
+        out.append("|---|---|---|---|---|")
+        for a in sorted(adrs, key=lambda x: x["number"]):
+            link = f"[{a['number']}]({a['path']})"
+            stories_cell = ", ".join(a["stories"]) if a["stories"] else "-"
+            out.append(f"| {link} | {a['slug']} | {a['title']} | {a['status']} | {stories_cell} |")
+    out.append("")
+
+    out.append("## Stories")
+    out.append("")
+    if not stories:
+        out.append("_none_")
+    else:
+        out.append("| id | title | priority | status | source |")
+        out.append("|---|---|---|---|---|")
+        for s in sorted(stories, key=lambda x: (x["sprint"], x["seq"])):
+            src = ", ".join(s["sources"]) if s["sources"] else "-"
+            link = f"[{s['id']}]({s['path']})"
+            out.append(f"| {link} | {s['title']} | {s['priority']} | {s['status']} | {src} |")
+    out.append("")
+
+    out.append("## Feedback")
+    out.append("")
+    if not feedback:
+        out.append("_none_")
+    else:
+        for f in sorted(feedback, key=lambda x: x["date"], reverse=True):
+            out.append(f"- [{f['date']}]({f['path']})")
+            for h in f["headings"]:
+                out.append(f"  - {h}")
+    out.append("")
+
+    out.append("## Topics")
+    out.append("")
+    topics: dict[str, dict] = {}
+
+    def bucket(name: str) -> dict:
+        return topics.setdefault(name, {"adrs": [], "stories": [], "feedback": []})
+
+    for a in adrs:
+        bucket(a["slug"])["adrs"].append(a)
+        for sid in a["stories"]:
+            for s in stories:
+                if s["id"].endswith(sid) or s["slug"] == sid or s["id"] == sid:
+                    bucket(a["slug"])["stories"].append(s)
+                    bucket(s["slug"])["adrs"].append(a)
+    for s in stories:
+        bucket(s["slug"])["stories"].append(s)
+        for src in s["sources"]:
+            if "docs/feedback/" in src:
+                for f in feedback:
+                    if src.endswith(f["path"]) or f["path"].endswith(src):
+                        bucket(s["slug"])["feedback"].append(f)
+    for f in feedback:
+        bucket(f["topic"])["feedback"].append(f)
+
+    if not topics:
+        out.append("_none_")
+    else:
+        for topic in sorted(topics):
+            bk = topics[topic]
+            uniq_adrs = {a["number"]: a for a in bk["adrs"]}
+            uniq_stories = {s["id"]: s for s in bk["stories"]}
+            uniq_feedback = {f["path"]: f for f in bk["feedback"]}
+            if not (uniq_adrs or uniq_stories or uniq_feedback):
+                continue
+            out.append(f"### {topic}")
+            out.append("")
+            if uniq_adrs:
+                links = ", ".join(f"[{a['number']}]({a['path']})"
+                                  for a in sorted(uniq_adrs.values(), key=lambda x: x["number"]))
+                out.append(f"- ADRs: {links}")
+            if uniq_stories:
+                links = ", ".join(f"[{s['id']}]({s['path']})"
+                                  for s in sorted(uniq_stories.values(), key=lambda x: x["id"]))
+                out.append(f"- stories: {links}")
+            if uniq_feedback:
+                links = ", ".join(f"[{f['date']}]({f['path']})"
+                                  for f in sorted(uniq_feedback.values(), key=lambda x: x["date"], reverse=True))
+                out.append(f"- feedback: {links}")
+            out.append("")
+
+    return "\n".join(out).rstrip() + "\n"
+
+
+def collect(project_root: Path) -> tuple[list[dict], list[dict], list[dict]]:
+    adrs = []
+    for p in sorted((project_root / "docs" / "adr").glob("*.md")):
+        if ADR_RE.match(p.name):
+            adrs.append(parse_adr(p))
+
+    stories = []
+    stories_dir = project_root / "docs" / "stories"
+    if stories_dir.is_dir():
+        for p in sorted(stories_dir.glob("*/*.feature")):
+            if STORY_RE.match(p.name):
+                stories.append(parse_story(p))
+
+    feedback = []
+    fdir = project_root / "docs" / "feedback"
+    if fdir.is_dir():
+        for p in sorted(fdir.glob("*.md")):
+            if FEEDBACK_RE.match(p.name):
+                feedback.append(parse_feedback(p))
+
+    return adrs, stories, feedback
+
+
+def main() -> int:
+    policy = load_policy()
+    wiki = policy.get("wiki") or {}
+    if isinstance(wiki, dict) and wiki.get("enabled") is False:
+        print("[build-wiki-index] wiki.enabled=false; skipping")
+        return 0
+
+    index_rel = (wiki or {}).get("index_path", "docs/wiki/index.md")
+    out_path = PROJECT_ROOT / index_rel
+
+    adrs, stories, feedback = collect(PROJECT_ROOT)
+    rendered = render(adrs, stories, feedback)
+
+    existing = out_path.read_text(encoding="utf-8") if out_path.is_file() else ""
+    if existing == rendered:
+        print(f"[build-wiki-index] {index_rel} unchanged")
+        return 0
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
+    tmp.write_text(rendered, encoding="utf-8")
+    os.replace(tmp, out_path)
+    print(f"[build-wiki-index] wrote {index_rel} ({len(adrs)} ADRs, {len(stories)} stories, {len(feedback)} feedback)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
