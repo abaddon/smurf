@@ -87,6 +87,25 @@ Decompose the goal into waves:
   to prod without human approval.
 - **Wave 6 — Promote**: delegate to `marketing` (release notes) and
   `sales-feedback` (data summary, optional).
+- **Wave 7 — Index** (REQUIRED when `wiki.enabled: true` in the resolved
+  policy — the shipped default; SKIPPED when `wiki.enabled: false`):
+  no subagent. Issue one Bash call:
+  `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build-wiki-index.py"`. The
+  script is deterministic and idempotent — it overwrites
+  `docs/wiki/index.md` only when content actually changed. After it
+  returns, commit-only-if-changed using three separate Bash calls (no
+  compound commands):
+  1. `git add docs/wiki/index.md`
+  2. `git diff --cached --quiet docs/wiki/index.md`  (exit 1 = changes staged)
+  3. If step 2 exited non-zero, `git commit -m "docs(wiki): refresh index"`.
+     Otherwise `git reset HEAD docs/wiki/index.md` to unstage and skip
+     the commit.
+
+  Wave 7 is identical in `/kickoff` and `/kickoff-team`. It runs in
+  your (the orchestrator's) main session — never as a teammate. It
+  indexes whatever has landed on the project's main branch by this
+  point. Worktree-side commits not yet merged are intentionally
+  invisible (see the kickoff-team docs).
 
 State the rigor-level branch decision verbatim in your plan-mode output:
 "rigor=production → architect + integration QA enabled" or
