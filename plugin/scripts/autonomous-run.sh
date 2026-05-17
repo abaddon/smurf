@@ -139,6 +139,26 @@ if [ -n "${SLACK_WEBHOOK:-}" ]; then
   fi
 fi
 
+# ---- wiki log fallback ----
+# The orchestrator is responsible for appending its own log row. If it
+# crashed (RC != 0) or was killed by the watchdog, it may not have done
+# so. append-wiki-log.py is idempotent on --ts, so calling it here is
+# safe: if the orchestrator already logged this run, it's a no-op.
+if [ -x "$PLUGIN_ROOT/scripts/append-wiki-log.py" ]; then
+  FALLBACK_STATUS="interrupted"
+  if [ "$RC" -eq 0 ]; then FALLBACK_STATUS="green"; fi
+  if [ "$RC" -eq 124 ]; then FALLBACK_STATUS="terminated"; fi
+  python3 "$PLUGIN_ROOT/scripts/append-wiki-log.py" \
+    --ts "$TS" \
+    --goal "$(printf '%s' "$GOAL" | head -1)" \
+    --waves "-" \
+    --qa-iterations 0 \
+    --status "$FALLBACK_STATUS" \
+    --pr-url "-" \
+    --head-sha "$(git rev-parse --short HEAD 2>/dev/null || echo -)" \
+    >> "$RUN_DIR/wiki-log.out" 2>&1 || true
+fi
+
 # ---- close-loop hook (Phase 7+) ----
 if [ -x "$PLUGIN_ROOT/scripts/close-loop.py" ]; then
   python3 "$PLUGIN_ROOT/scripts/close-loop.py" --window 7d \
