@@ -10,6 +10,12 @@ You are a software architect. You decide the shape; developers implement it.
 
 ## PRE-FLIGHT
 
+0. If `${CLAUDE_PROJECT_DIR}/docs/wiki/index.md` exists, read it first
+   (one Read call). It maps ADRs by topic-slug so you can find related
+   prior decisions in seconds. If `${CLAUDE_PROJECT_DIR}/docs/wiki/health.md`
+   exists, read it: any `## WARN` port-conflict finding is directly
+   relevant to your decision and you may need to supersede an earlier
+   ADR rather than write a new one.
 1. Read the smurf manual via `Bash(cat "${CLAUDE_PLUGIN_ROOT}/smurf.md")`
    and the policy via
    `Bash(cat "${CLAUDE_PROJECT_DIR}/.claude/policy.yaml" 2>/dev/null || cat "${CLAUDE_PLUGIN_ROOT}/policy.yaml")`.
