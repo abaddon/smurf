@@ -80,8 +80,12 @@ done
 
 echo
 echo "=== [plugin] Scripts ==="
-for s in autonomous-run.sh close-loop.py doctor.sh install-cron.sh init-project.sh; do
+for s in autonomous-run.sh close-loop.py doctor.sh install-cron.sh init-project.sh \
+         build-wiki-index.py append-wiki-log.py wiki_lint.py; do
   check "scripts/$s exists" "test -f $PLUGIN_ROOT/scripts/$s"
+done
+for s in build-wiki-index.py append-wiki-log.py wiki_lint.py; do
+  check "scripts/$s parses as Python" "python3 -c \"import ast; ast.parse(open('$PLUGIN_ROOT/scripts/$s').read())\""
 done
 
 echo
@@ -99,6 +103,16 @@ warn "verify.sh exists and is executable"     "test -x $PROJECT_ROOT/verify.sh"
 warn "docs/rigor-level.md exists"             "test -f $PROJECT_ROOT/docs/rigor-level.md"
 warn ".claude/runs/next-goal.md exists"       "test -f $PROJECT_ROOT/.claude/runs/next-goal.md"
 warn ".mcp.json exists (optional)"            "test -f $PROJECT_ROOT/.mcp.json"
+
+echo
+echo "=== [project] Wiki layer (active when wiki.enabled: true) ==="
+warn "docs/wiki/index.md exists (created by first wave 7)"           "test -f $PROJECT_ROOT/docs/wiki/index.md"
+warn "docs/wiki/log.md exists (created on first run append)"         "test -f $PROJECT_ROOT/docs/wiki/log.md"
+warn "docs/wiki/health.md exists (created by first close-loop)"      "test -f $PROJECT_ROOT/docs/wiki/health.md"
+warn "docs/wiki/health.md mtime within 14d (stale → close-loop dead)" \
+  "test -f $PROJECT_ROOT/docs/wiki/health.md && test -z \"\$(find $PROJECT_ROOT/docs/wiki/health.md -mtime +14 -print 2>/dev/null)\""
+warn ".claude/worktrees/ empty or absent (leftover worktrees may hide wave-7 input)" \
+  "test ! -d $PROJECT_ROOT/.claude/worktrees || test -z \"\$(ls -A $PROJECT_ROOT/.claude/worktrees 2>/dev/null)\""
 
 echo
 echo "=== [project] Settings ==="

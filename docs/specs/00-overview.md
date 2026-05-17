@@ -27,6 +27,7 @@ plan is `docs/research.md` — Architettura A from §3.
 | 12 | Headless run + cron + watchdog | Phase 5 |
 | 13 | Feedback loop (`close-loop.py`) | Phase 7 |
 | 14 | Iteration mechanism + budgets | Phase 6a |
+| 15 | Wiki layer (index + log + lint) | Phase 8 |
 
 ## Reading order
 

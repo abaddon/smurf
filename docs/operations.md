@@ -118,6 +118,9 @@ first-party provider — non-Anthropic models may break tool-use.
 | `docs/stories/<sprint>/*.feature` | product-owner stories | no |
 | `docs/adr/NNNN-*.md` | architect decisions | no |
 | `qa/<id>.md` | QA reports | no |
+| `docs/wiki/index.md` | wave-7 topic index (regenerated) | no |
+| `docs/wiki/log.md` | append-only run log (one row per run) | no |
+| `docs/wiki/health.md` | lint output (overwritten per close-loop) | no |
 
 ## Common failure modes and recovery
 
@@ -129,6 +132,9 @@ first-party provider — non-Anthropic models may break tool-use.
 | Cron not firing | Wrong crontab user, or `claude` not on PATH for cron's environment | `bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-cron.sh" --status`; ensure cron uses `bash -lc` (the installer does) so login env is loaded. |
 | Hook blocks normal dev work | `bash_allowlist` too tight | Edit `policy.yaml` (broaden) or add personal override in `.claude/settings.local.json`. |
 | Orchestrator skips the architect wave despite `production` rigor | Stale `docs/rigor-level.md` content | `cat docs/rigor-level.md` (must literally be `production`); restart run. |
+| `docs/wiki/index.md` missing stories that just landed | `/kickoff-team` worktree branches not merged to main before wave 7 | Merge worktree branches into the project's main branch and re-invoke wave 7 manually: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build-wiki-index.py`. |
+| `close-loop.py` exits 2 every night | Wiki lint found a FAIL (accepted-ADR cite broken) | `cat docs/wiki/health.md`, fix the broken `## Context` cite or flip the ADR to `Status: superseded by …`. |
+| `docs/wiki/log.md` shows two rows for the same run | Should not happen (idempotent on `--ts`); a bug | File against the plugin; meanwhile delete the duplicate by hand and re-commit. |
 
 ## Escalation
 
