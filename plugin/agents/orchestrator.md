@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Top-level coordinator. Decomposes a goal into a wave-based DAG and delegates to specialist subagents (product-owner, architect, developer, qa-engineer, devops, marketing). Invoke with "@orchestrator: <goal>" or via /kickoff.
-tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task
+tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task, TeamCreate, SendMessage, TaskCreate, TaskUpdate, TaskList, TaskGet
 model: opus
 color: purple
 ---
