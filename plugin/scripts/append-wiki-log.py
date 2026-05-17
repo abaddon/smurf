@@ -23,11 +23,13 @@ Usage:
                        --head-sha abc1234
 
 Status values (free-form, but conventionally one of):
-    green      — all waves succeeded
-    red        — QA red after max_qa_iterations
-    escalated  — orchestrator wrote escalation.md and exited
+    green       — all waves succeeded
+    red         — QA red after max_qa_iterations
+    escalated   — orchestrator wrote escalation.md and exited
     interrupted — autonomous-run.sh watchdog or SIGTERM
-    terminated — close-loop fallback path
+    terminated  — close-loop fallback path
+    bootstrap   — /smurf:bootstrap wave F (reverse-engineered run,
+                  not a goal-driven orchestrator run)
 
 Exit codes:
     0  appended or skipped (idempotent no-op); also when wiki.enabled=false

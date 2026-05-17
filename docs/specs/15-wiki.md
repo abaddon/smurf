@@ -121,10 +121,35 @@ invisible: the index represents ground truth, not in-flight work.
 | ts | goal (≤80 chars) | waves | qa_iterations | status | pr_url | head_sha |
 ```
 
-`status` ∈ { `green`, `red`, `escalated`, `interrupted`, `terminated` }.
-The first three are written by the orchestrator on its happy/sad/
-escalation paths; the last two by `autonomous-run.sh`'s fallback when
-the orchestrator crashed or was watchdogged.
+`status` ∈ { `green`, `red`, `escalated`, `interrupted`, `terminated`,
+`bootstrap` }. The first three are written by the orchestrator on its
+happy/sad/escalation paths; `interrupted`/`terminated` by
+`autonomous-run.sh`'s fallback when the orchestrator crashed or was
+watchdogged; `bootstrap` by `/smurf:bootstrap` wave F.
+
+## Bootstrap interaction
+
+`/smurf:bootstrap` is a one-shot reverse-engineering run, not a
+goal-driven orchestrator run. Without explicit indexing it would
+produce ADRs / stories / a feedback file that the wiki layer
+would not surface until the user's first `/smurf:kickoff`. To
+close that gap, bootstrap defines **wave F** (see
+`plugin/commands/bootstrap.md`), which runs at the very end and:
+
+1. invokes `build-wiki-index.py` to regenerate `docs/wiki/index.md`,
+2. invokes `append-wiki-log.py --status bootstrap --ts <run-id>` to
+   add a row to `docs/wiki/log.md`,
+3. commits both via `docs(bootstrap): wave F — index artifacts`
+   (only if either file actually changed).
+
+Wave F is skipped when `wiki.enabled: false`.
+
+Bootstrap does NOT run `wiki_lint.py`. Wave D already cite-checks
+the bootstrap-scoped artifacts; running lint at project scope
+would emit FAIL on cites that are legitimately broken (the
+bootstrap promotes implicit decisions in code to `Status: proposed`
+ADRs — those cites are surfaced by wave D, not the wiki lint).
+Lint runs on its normal cadence via `/smurf:close-loop`.
 
 ## Test plan
 
