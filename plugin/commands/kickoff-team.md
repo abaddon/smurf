@@ -8,14 +8,14 @@ argument-hint: <goal description with parallel features>
 Use **Agent Teams mode** for wave 3. This requires the env var
 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` to be set in the user's
 `.claude/settings.json` (or `.claude/settings.local.json`). The smurf
-plugin manifest cannot set env vars on your behalf — if
-`Teammate.spawnTeam` is unavailable, bail with: "Agent Teams mode
-requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your project's
+plugin manifest cannot set env vars on your behalf — if `TeamCreate`
+errors out as unavailable, bail with: "Agent Teams mode requires
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your project's
 `.claude/settings.local.json` — set it and re-run." If the tools are
-available, `Teammate.spawnTeam` and `SendMessage` proceed normally.
+available, `TeamCreate` and `SendMessage` proceed normally.
 
 For wave 3 specifically:
-1. Call `Teammate.spawnTeam` with these teammates:
+1. Call `TeamCreate` with these teammates:
    - `developer` × N (one per parallel story; each in `isolation: worktree`)
    - `qa-engineer` × 1
    - `architect` × 1, prompted as **architect-advisor** (set `advisor: true`
@@ -26,7 +26,7 @@ For wave 3 specifically:
 3. Monitor `TaskList`; let developers `SendMessage architect` for design
    clarifications and `SendMessage developer` (from qa) for failure
    detail.
-4. When all tasks reach `done`, `Teammate.cleanup`.
+4. When all tasks reach `done`, call `TeamDelete` to release the team.
 5. Use `budget_usd_team` from the project's `.claude/policy.yaml` if
    present, otherwise from `${CLAUDE_PLUGIN_ROOT}/policy.yaml` (higher
    than subagent-mode budget — Agent Teams burn 7-15× tokens per

@@ -17,10 +17,11 @@ spawns workers, and writes the final run summary.
 | `model` | `opus` | research §1.2: Agent-Teams lead requires Opus 4.6+; orchestrator is the lead |
 | `color` | `purple` | UI only |
 
-`Teammate`, `SendMessage`, `TaskCreate/Update/List/Get` are auto-available
-when `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set in
-`.claude/settings.json` `env`. Do **not** list them in the agent's `tools`
-or in `--allowedTools` — they will fail to validate.
+`TeamCreate`, `TeamDelete`, `SendMessage`, `TaskCreate/Update/List/Get`
+are gated on `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` being set in
+`.claude/settings.json` `env`. The orchestrator agent allowlists them
+in its `tools:` frontmatter; calls will error at invocation time if the
+env var is not set.
 
 ## Pre-flight (mandatory order, every invocation)
 
@@ -73,13 +74,13 @@ loop:
 | Slash command | Wave 3 mode | Budget tier |
 |---|---|---|
 | `/kickoff <goal>` | subagents (workers don't talk to each other) | `budget_usd_subagent` |
-| `/kickoff-team <goal>` | Agent Team (`Teammate.spawnTeam` with developer×N + qa + architect-advisor) | `budget_usd_team` |
+| `/kickoff-team <goal>` | Agent Team (`TeamCreate` with developer×N + qa + architect-advisor) | `budget_usd_team` |
 
 In Agent Team mode, the orchestrator calls:
-1. `Teammate.spawnTeam` with the team roster
+1. `TeamCreate` with the team roster
 2. `TaskCreate` per story (assigns to a developer)
 3. monitors `TaskList` (poll-free; receives status updates)
-4. on all-done: `Teammate.cleanup`
+4. on all-done: `TeamDelete`
 
 ## Hard rules
 
