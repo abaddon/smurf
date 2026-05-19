@@ -5,16 +5,31 @@ argument-hint: <goal description with parallel features>
 
 @orchestrator: $ARGUMENTS
 
-Use **Agent Teams mode** for wave 3. This requires the env var
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` to be set in the user's
-`.claude/settings.json` (or `.claude/settings.local.json`). The smurf
-plugin manifest cannot set env vars on your behalf — if `TeamCreate`
-errors out as unavailable, bail with: "Agent Teams mode requires
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your project's
-`.claude/settings.local.json` — set it and re-run." If the tools are
-available, `TeamCreate` and `SendMessage` proceed normally.
+Use **Agent Teams mode** for wave 3. This requires:
+- The env var `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` set in the
+  user's `.claude/settings.json` (or `.claude/settings.local.json`).
+- A host CLI that exposes the FULL Agent-Teams dispatch surface
+  in the orchestrator's session — not just `TeamCreate`.
 
-For wave 3 specifically:
+The smurf plugin manifest cannot set env vars on your behalf.
+
+**Capability probe — run BEFORE `TeamCreate`.** Verify every one of
+these tools is callable in the current session: `TeamCreate`,
+`TeamDelete`, `SendMessage`, `TaskCreate`, `TaskUpdate`, `TaskList`,
+`TaskGet`. If ANY are missing, do NOT call `TeamCreate` (a partial
+surface causes wave 3 to silently degrade to sequential inline
+execution). Bail with: "Agent-Teams mode requires
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your project's
+`.claude/settings.local.json` AND a host CLI that exposes the full
+`Task*` dispatch surface. Missing tools: `<list>`. Re-run with
+`/smurf:kickoff` for subagent mode, or fix the env/CLI and re-run
+`/smurf:kickoff-team`." Log the same condition to
+`.claude/runs/<ts>/orchestrator.log` as
+`wave-3 agent-teams unavailable missing=<list> action=bail`.
+Do NOT silently fall through to subagent mode — the user explicitly
+asked for Agent Teams; make the failure visible.
+
+For wave 3 specifically (only if the capability probe passes):
 1. Call `TeamCreate` with these teammates:
    - `developer` × N (one per parallel story; each in `isolation: worktree`)
    - `qa-engineer` × 1

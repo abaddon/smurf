@@ -73,10 +73,31 @@ Decompose the goal into waves:
   `TeamCreate`/`TeamDelete`/`SendMessage`/`Task*` tools are gated on
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` being set in the user's
   `.claude/settings.json` (or `.claude/settings.local.json`). The
-  smurf plugin manifest cannot set this on the user's behalf — if
-  `TeamCreate` errors out as unavailable, bail with a clear message
-  pointing the user at that env var. Do NOT request these tools in
-  your prompt.
+  smurf plugin manifest cannot set this on the user's behalf.
+
+  **Capability probe (run BEFORE `TeamCreate`)**: Agent-Teams mode
+  requires the full dispatch surface, not just team lifecycle. Host
+  CLIs have been observed to expose `TeamCreate` while withholding
+  `TaskCreate`/`TaskUpdate`/`TaskList`/`TaskGet`, which silently
+  degrades wave 3 to sequential inline execution. Before calling
+  `TeamCreate`, verify ALL of these tools are callable in the
+  current session: `TeamCreate`, `TeamDelete`, `SendMessage`,
+  `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`. If ANY one is
+  unavailable, do NOT proceed with Agent-Teams mode. Instead:
+  1. Append one line to `.claude/runs/<ts>/orchestrator.log`:
+     `wave-3 agent-teams unavailable missing=<comma-separated tool names> action=bail`
+  2. Bail with this user-facing message verbatim: "Agent-Teams mode
+     requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your
+     project's `.claude/settings.local.json` AND a host CLI that
+     exposes the full `Task*` dispatch surface. Missing tools:
+     `<list>`. Re-run with `/smurf:kickoff` for subagent mode, or
+     fix the env/CLI and re-run `/smurf:kickoff-team`."
+  3. Stop. Do not silently fall through to subagent mode — the user
+     explicitly asked for Agent Teams, so make the failure visible.
+
+  Do NOT request these tools in your prompt at runtime — they are
+  declared in this agent's frontmatter and are either present or
+  absent for the whole session.
 - **Wave 4 — Verify**:
   - **4a (always)**: delegate to `qa-engineer` for acceptance-criteria
     check + `./verify.sh`. Output: `qa/<id>.md`.
