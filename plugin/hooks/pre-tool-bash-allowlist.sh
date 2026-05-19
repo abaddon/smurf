@@ -49,19 +49,114 @@ for p in "${DANGER_PATTERNS[@]}"; do
   fi
 done
 
-# Reject compound commands. Policy: one Bash tool call per command.
-# This keeps the allowlist auditable — each call is matched as a whole against
-# a single glob. Operators detected: && || ; | $( ` (command substitution).
-# Caveat: this also rejects commands with these operators inside quoted strings
-# (e.g. `echo "a && b"`). If you need that, write a file via the Write tool.
-case "$CMD" in
-  *"&&"*|*"||"*|*";"*|*"|"*|*'$('*|*'`'*)
-    echo "BLOCKED by pre-tool-bash-allowlist: compound commands are not allowed." >&2
-    echo "Issue one Bash tool call per command (split on &&, ||, ;, |, \$(...), or backticks)." >&2
-    echo "command: $CMD" >&2
-    exit 2
-    ;;
-esac
+# Compound commands are split into segments; each segment is matched against
+# the allowlist independently. Top-level operators recognized (outside quotes):
+# && || ; | — each starts a new segment.
+# Command substitution ($(...) or backticks) is still blocked since a nested
+# command can't be cleanly audited against a flat allowlist.
+# The splitter is quote-aware (single/double quotes, double-quote backslash
+# escapes), so `echo "a && b"` is treated as a single segment.
+split_command() {
+  local cmd="$1"
+  local len=${#cmd}
+  local i=0
+  local ch next
+  local in_single=0 in_double=0
+  local seg=""
+  local segments=()
+  while [ $i -lt $len ]; do
+    ch="${cmd:$i:1}"
+    next="${cmd:$((i+1)):1}"
+    if [ $in_single -eq 1 ]; then
+      seg+="$ch"
+      if [ "$ch" = "'" ]; then in_single=0; fi
+      i=$((i+1)); continue
+    fi
+    if [ $in_double -eq 1 ]; then
+      if [ "$ch" = "\\" ] && [ -n "$next" ]; then
+        seg+="$ch$next"; i=$((i+2)); continue
+      fi
+      seg+="$ch"
+      if [ "$ch" = '"' ]; then in_double=0; fi
+      i=$((i+1)); continue
+    fi
+    case "$ch" in
+      "'") in_single=1; seg+="$ch"; i=$((i+1)) ;;
+      '"') in_double=1; seg+="$ch"; i=$((i+1)) ;;
+      '\\')
+        if [ -n "$next" ]; then seg+="$ch$next"; i=$((i+2))
+        else seg+="$ch"; i=$((i+1))
+        fi
+        ;;
+      '`') return 2 ;;
+      '$')
+        if [ "$next" = "(" ]; then return 2; fi
+        seg+="$ch"; i=$((i+1))
+        ;;
+      '&')
+        if [ "$next" = "&" ]; then
+          segments+=("$seg"); seg=""; i=$((i+2))
+        else
+          seg+="$ch"; i=$((i+1))
+        fi
+        ;;
+      '|')
+        if [ "$next" = "|" ]; then
+          segments+=("$seg"); seg=""; i=$((i+2))
+        else
+          segments+=("$seg"); seg=""; i=$((i+1))
+        fi
+        ;;
+      ';')
+        segments+=("$seg"); seg=""; i=$((i+1))
+        ;;
+      *)
+        seg+="$ch"; i=$((i+1))
+        ;;
+    esac
+  done
+  if [ $in_single -eq 1 ] || [ $in_double -eq 1 ]; then
+    return 3
+  fi
+  segments+=("$seg")
+  local s
+  for s in "${segments[@]}"; do
+    s="${s#"${s%%[![:space:]]*}"}"
+    s="${s%"${s##*[![:space:]]}"}"
+    if [ -n "$s" ]; then printf '%s\n' "$s"; fi
+  done
+  return 0
+}
+
+SPLIT_RC=0
+SEGMENTS_OUTPUT=$(split_command "$CMD") || SPLIT_RC=$?
+if [ "$SPLIT_RC" -eq 2 ]; then
+  echo "BLOCKED by pre-tool-bash-allowlist: command substitution (\$(...) or backticks) is not allowed." >&2
+  echo "Write intermediate results to a file or pass them as explicit arguments instead." >&2
+  echo "command: $CMD" >&2
+  exit 2
+fi
+if [ "$SPLIT_RC" -eq 3 ]; then
+  echo "BLOCKED by pre-tool-bash-allowlist: unbalanced quotes in command." >&2
+  echo "command: $CMD" >&2
+  exit 2
+fi
+if [ "$SPLIT_RC" -ne 0 ]; then
+  echo "BLOCKED by pre-tool-bash-allowlist: split_command returned unexpected status $SPLIT_RC" >&2
+  echo "command: $CMD" >&2
+  exit 2
+fi
+
+SEGMENTS=()
+while IFS= read -r line; do
+  if [ -n "$line" ]; then SEGMENTS+=("$line"); fi
+done <<< "$SEGMENTS_OUTPUT"
+
+if [ "${#SEGMENTS[@]}" -eq 0 ]; then
+  echo "BLOCKED by pre-tool-bash-allowlist: no valid command segments found." >&2
+  echo "command: $CMD" >&2
+  exit 2
+fi
 
 # Allowlist from policy.yaml. Patterns are glob-style; we convert to regex.
 if [ ! -f "$POLICY" ]; then
@@ -121,13 +216,25 @@ glob_to_regex() {
   printf '^%s$' "$re"
 }
 
-for glob in "${PATTERNS[@]}"; do
-  re=$(glob_to_regex "$glob")
-  if [[ "$CMD" =~ $re ]]; then
-    exit 0
+# Every segment must match the allowlist. For a non-compound command there
+# is exactly one segment — same behavior as before for that case.
+for seg in "${SEGMENTS[@]}"; do
+  matched=0
+  for glob in "${PATTERNS[@]}"; do
+    re=$(glob_to_regex "$glob")
+    if [[ "$seg" =~ $re ]]; then
+      matched=1
+      break
+    fi
+  done
+  if [ $matched -eq 0 ]; then
+    echo "BLOCKED by pre-tool-bash-allowlist: segment '$seg' does not match any pattern in policy.yaml bash_allowlist" >&2
+    if [ "${#SEGMENTS[@]}" -gt 1 ]; then
+      echo "(from compound command: $CMD)" >&2
+    fi
+    echo "Allowlist: ${PATTERNS[*]}" >&2
+    exit 2
   fi
 done
 
-echo "BLOCKED by pre-tool-bash-allowlist: '$CMD' does not match any pattern in policy.yaml bash_allowlist" >&2
-echo "Allowlist: ${PATTERNS[*]}" >&2
-exit 2
+exit 0

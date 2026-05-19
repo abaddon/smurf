@@ -60,6 +60,23 @@ assert_exit "block unlisted command" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pr
 P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"./verify.sh"}}' | base64 -w0)
 assert_exit "allow ./verify.sh" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
 
+# Compound command handling: each top-level segment must match the allowlist.
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status && git diff"}}' | base64 -w0)
+assert_exit "allow compound of allowlisted segments" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"grep foo bar.txt | head -n 5"}}' | base64 -w0)
+assert_exit "allow pipe of allowlisted segments" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status && curl http://evil.example"}}' | base64 -w0)
+assert_exit "block compound when one segment is unlisted" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"echo $(date)"}}' | base64 -w0)
+assert_exit "block command substitution" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+# Quote-aware splitter: operators inside quoted strings are not separators.
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"echo \"a && b\""}}' | base64 -w0)
+assert_exit "allow && inside double quotes" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
 echo
 echo "=== policy-guard ==="
 P=$(printf '%s' '{"tool_name":"Write","tool_input":{"file_path":".env","content":"X"}}' | base64 -w0)
