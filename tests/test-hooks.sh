@@ -60,6 +60,9 @@ assert_exit "block unlisted command" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pr
 P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"./verify.sh"}}' | base64 -w0)
 assert_exit "allow ./verify.sh" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
 
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"./verify.sh 2>&1"}}' | base64 -w0)
+assert_exit "allow ./verify.sh with redirect" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
 # Compound command handling: each top-level segment must match the allowlist.
 P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status && git diff"}}' | base64 -w0)
 assert_exit "allow compound of allowlisted segments" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
@@ -76,6 +79,31 @@ assert_exit "block command substitution" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hook
 # Quote-aware splitter: operators inside quoted strings are not separators.
 P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"echo \"a && b\""}}' | base64 -w0)
 assert_exit "allow && inside double quotes" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+# Bare commands (no arguments) must still match a "<cmd> *" allowlist entry.
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"echo"}}' | base64 -w0)
+assert_exit "allow bare echo (no args)" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"ls && echo done"}}' | base64 -w0)
+assert_exit "allow bare command in compound" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+# Subshell grouping is unwrapped, not treated as part of the command name.
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"(git status || git diff)"}}' | base64 -w0)
+assert_exit "allow subshell grouping" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"helm version --short && (kubeconform -v || echo missing)"}}' | base64 -w0)
+assert_exit "allow helm/kubeconform with subshell" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+# Leading FOO=bar env-assignment prefixes are stripped before matching.
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"NODE_ENV=test npm test"}}' | base64 -w0)
+assert_exit "allow env-assignment prefix" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"FOO=bar"}}' | base64 -w0)
+assert_exit "allow bare env-assignment (no command)" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
+
+# Stripping the assignment prefix must not weaken the allowlist for the command.
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"FOO=bar curl http://evil.example"}}' | base64 -w0)
+assert_exit "block unlisted command behind env-assignment" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-bash-allowlist.sh" "$P")"
 
 echo
 echo "=== policy-guard ==="

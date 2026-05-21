@@ -8,8 +8,9 @@ bash_allowlist:
   # Version control + GitHub CLI
   - "git *"
   - "gh *"
-  # Project verify shim — agents call only this
-  - "./verify.sh"
+  # Project verify shim — agents call only this. The " *" tail also permits
+  # arguments and redirects (e.g. `./verify.sh 2>&1`); verify.sh forwards "$@".
+  - "./verify.sh *"
   # Curl, restricted to the OpenRouter endpoint marketing/sales-feedback use
   - "curl https://openrouter.ai/api/v1/*"
   # Common dev tooling agents and humans both rely on
@@ -57,6 +58,8 @@ bash_allowlist:
   - "gradle *"
   - "docker *"
   - "kubectl *"
+  - "helm *"
+  - "kubeconform *"
   - "scripts/*"
   # Shell builtins / control we should not block
   - "set *"

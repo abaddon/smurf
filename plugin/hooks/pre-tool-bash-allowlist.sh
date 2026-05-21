@@ -52,6 +52,8 @@ done
 # Compound commands are split into segments; each segment is matched against
 # the allowlist independently. Top-level operators recognized (outside quotes):
 # && || ; | — each starts a new segment.
+# Subshell grouping parentheses ( ) are unwrapped: they are not part of any
+# command, so `(a && b)` yields segments `a` and `b`.
 # Command substitution ($(...) or backticks) is still blocked since a nested
 # command can't be cleanly audited against a flat allowlist.
 # The splitter is quote-aware (single/double quotes, double-quote backslash
@@ -92,6 +94,11 @@ split_command() {
       '$')
         if [ "$next" = "(" ]; then return 2; fi
         seg+="$ch"; i=$((i+1))
+        ;;
+      '('|')')
+        # Subshell grouping — the parenthesis is not part of any command, so
+        # drop it and let the operators inside split normally.
+        i=$((i+1))
         ;;
       '&')
         if [ "$next" = "&" ]; then
@@ -202,6 +209,16 @@ fi
 # Convert glob -> regex anchored: '*' -> '.*', escape regex metas.
 glob_to_regex() {
   local glob="$1"
+  # A pattern ending in " *" means "this command, optionally followed by
+  # arguments". Make the separating space optional so a bare command with no
+  # arguments (e.g. `echo`, `ls`, `git`) matches too — not just `echo foo`.
+  local trailing_args=0
+  case "$glob" in
+    *" *")
+      trailing_args=1
+      glob="${glob:0:${#glob}-2}"
+      ;;
+  esac
   local re=""
   local i ch
   for (( i=0; i<${#glob}; i++ )); do
@@ -213,16 +230,69 @@ glob_to_regex() {
       *)   re+="$ch" ;;
     esac
   done
+  if [ "$trailing_args" -eq 1 ]; then
+    re+="( .*)?"
+  fi
   printf '^%s$' "$re"
+}
+
+# Strip leading "NAME=value" environment-assignment tokens so that
+# `FOO=bar cmd args` is matched against the allowlist as `cmd args`. The
+# assignment names no command, so ignoring the prefix is safe — the real
+# command is still matched, and the hard denylist still sees the raw command.
+# Quote- and backslash-aware so quoted spaces in a value do not end a token
+# early. A segment that is only assignments yields the empty string.
+strip_assignments() {
+  local s="$1"
+  while :; do
+    case "$s" in *=*) ;; *) break ;; esac
+    local name="${s%%=*}"
+    case "$name" in
+      ''|[0-9]*|*[!A-Za-z0-9_]*) break ;;
+    esac
+    local rest="${s#*=}"
+    local len=${#rest}
+    local j=0 ch in_s=0 in_d=0
+    while [ $j -lt $len ]; do
+      ch="${rest:$j:1}"
+      if [ $in_s -eq 1 ]; then
+        [ "$ch" = "'" ] && in_s=0
+        j=$((j+1)); continue
+      fi
+      if [ $in_d -eq 1 ]; then
+        if [ "$ch" = "\\" ]; then j=$((j+2)); continue; fi
+        [ "$ch" = '"' ] && in_d=0
+        j=$((j+1)); continue
+      fi
+      case "$ch" in
+        "'") in_s=1 ;;
+        '"') in_d=1 ;;
+        '\\') j=$((j+2)); continue ;;
+        [[:space:]]) break ;;
+      esac
+      j=$((j+1))
+    done
+    local after="${rest:$j}"
+    after="${after#"${after%%[![:space:]]*}"}"
+    s="$after"
+    [ -z "$s" ] && break
+  done
+  printf '%s' "$s"
 }
 
 # Every segment must match the allowlist. For a non-compound command there
 # is exactly one segment — same behavior as before for that case.
 for seg in "${SEGMENTS[@]}"; do
+  # Match against the command minus any leading FOO=bar env-assignment prefix.
+  match_target=$(strip_assignments "$seg")
+  # A segment that is purely env-var assignments runs no command — allow it.
+  if [ -z "$match_target" ]; then
+    continue
+  fi
   matched=0
   for glob in "${PATTERNS[@]}"; do
     re=$(glob_to_regex "$glob")
-    if [[ "$seg" =~ $re ]]; then
+    if [[ "$match_target" =~ $re ]]; then
       matched=1
       break
     fi
