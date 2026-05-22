@@ -327,13 +327,11 @@ No subagent. Using the signals from step 0.4 and the wave outputs:
    of `docs/rigor-level.md` with the single word above." Do NOT
    overwrite `docs/rigor-level.md` yourself — that file is the
    user's call.
-2. If you detected non-default tooling not in the plugin's
-   `bash_allowlist` (e.g. `bun`, `deno`, `uv`, `task`, `just`), and
-   the project does not already have `.claude/policy.yaml`, write
-   `docs/bootstrap/policy-override-suggested.yaml` containing only
-   a `bash_allowlist:` block with the extras and a leading comment
-   explaining how to copy it to `.claude/policy.yaml`. Do NOT
-   write `.claude/policy.yaml` directly.
+2. The bash guard (`pre-tool-bash-guard.sh`) permits all tooling by
+   default — it blocks only a denylist of destructive patterns — so no
+   per-project tooling allowlist is needed. If the project warrants a
+   `forbidden_paths` / `forbidden_patterns` override, note that in the
+   summary; do NOT write `.claude/policy.yaml` directly.
 3. Write `.claude/runs/<run-id>/summary.md` with:
    - the goal: "bootstrap smurf in an existing project"
    - waves executed (A, B, C, D, E, F) with one line each

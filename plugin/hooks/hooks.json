@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-bash-allowlist.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-bash-guard.sh"
           }
         ]
       },

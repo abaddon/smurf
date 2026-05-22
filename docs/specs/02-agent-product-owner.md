@@ -12,7 +12,7 @@ never code.
 | Field | Value | Why |
 |---|---|---|
 | `model` | `sonnet` | story drafting is well within Sonnet capability |
-| `tools` | `Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion` | reads feedback, writes story files; commits its own story files (`git add`/`git commit`) gated by `bash_allowlist`; raises clarifying questions via `AskUserQuestion` when the goal is ambiguous |
+| `tools` | `Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion` | reads feedback, writes story files; commits its own story files (`git add`/`git commit`), gated on `verify.sh` by the pre-commit-verify hook; raises clarifying questions via `AskUserQuestion` when the goal is ambiguous |
 | `skills` | `gherkin-stories` | template for Feature/Scenario format |
 | `mcpServers` | `linear` (optional) | future: pull priority hints from Linear backlog |
 

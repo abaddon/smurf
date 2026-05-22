@@ -16,10 +16,11 @@ curl to keep token cost ~$0.05 per run.
 | `tools` | `Read, Write, Edit, Bash, Glob, Grep` | reads commits, runs curl, writes outputs |
 | `skills` | `openrouter-curl` | exact request/parse pattern |
 
-The Bash tool is fenced at runtime by `.claude/policy.yaml`
-`bash_allowlist` (specifically `curl https://openrouter.ai/api/v1/*`)
-and the `pre-tool-bash-allowlist.sh` hook. The agent cannot actually
-make arbitrary network calls; just OpenRouter.
+The agent shells out to `curl` for OpenRouter calls. The
+`pre-tool-bash-guard.sh` hook screens Bash commands against a denylist
+of dangerous patterns; it does not restrict which URLs `curl` may
+reach, so the OpenRouter-only convention is enforced by the agent
+prompt and the `openrouter-curl` skill, not by a hook.
 
 ## Pre-flight
 

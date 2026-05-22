@@ -16,7 +16,7 @@ After this completes:
 1. Replace the no-op `verify.sh` body with your stack's
    tests/build (npm test, pytest, cargo test, mvn verify, etc.).
 2. Optionally copy `${CLAUDE_PLUGIN_ROOT}/policy.yaml` to
-   `.claude/policy.yaml` and edit `bash_allowlist` /
+   `.claude/policy.yaml` and edit `forbidden_paths` /
    `forbidden_patterns` for your project. Without an override the
    plugin's defaults are used.
 3. Optionally enable Agent Teams mode by adding

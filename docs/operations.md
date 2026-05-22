@@ -130,7 +130,7 @@ first-party provider — non-Anthropic models may break tool-use.
 | Run hits budget cap | Goal too ambitious for `prototype` rigor | Split goal; OR set `production` rigor and use `MODE=team`. |
 | QA loop never ends | `max_qa_iterations` cap not enforced | Inspect `summary.md` for `qa_iterations` field; raise `policy.yaml` if intentional. |
 | Cron not firing | Wrong crontab user, or `claude` not on PATH for cron's environment | `bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-cron.sh" --status`; ensure cron uses `bash -lc` (the installer does) so login env is loaded. |
-| Hook blocks normal dev work | `bash_allowlist` too tight | Edit `policy.yaml` (broaden) or add personal override in `.claude/settings.local.json`. |
+| Bash guard blocks a needed command | Command matched a `DANGER_PATTERNS` entry in `pre-tool-bash-guard.sh` | Loosen the matching pattern in the hook, or add a personal override in `.claude/settings.local.json`. |
 | Orchestrator skips the architect wave despite `production` rigor | Stale `docs/rigor-level.md` content | `cat docs/rigor-level.md` (must literally be `production`); restart run. |
 | `docs/wiki/index.md` missing stories that just landed | `/kickoff-team` worktree branches not merged to main before wave 7 | Merge worktree branches into the project's main branch and re-invoke wave 7 manually: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build-wiki-index.py`. |
 | `close-loop.py` exits 2 every night | Wiki lint found a FAIL (accepted-ADR cite broken) | `cat docs/wiki/health.md`, fix the broken `## Context` cite or flip the ADR to `Status: superseded by …`. |

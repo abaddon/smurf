@@ -7,15 +7,15 @@ the only enforcement mechanism in this repo that is guaranteed to fire.
 ## Files
 
 - `.claude/hooks/session-start-context.sh` — SessionStart
-- `.claude/hooks/pre-tool-bash-allowlist.sh` — PreToolUse(Bash)
+- `.claude/hooks/pre-tool-bash-guard.sh` — PreToolUse(Bash)
 - `.claude/hooks/policy-guard.sh` — PreToolUse(Write|Edit)
 - `.claude/hooks/pre-commit-verify.sh` — PreToolUse(Bash matching `git commit`)
 - `.claude/hooks/on-stop-summary.sh` — Stop
 - `.claude/hooks/on-subagent-complete.sh` — SubagentStop
 - `.claude/policy.yaml` — config consumed by the above
 - `.claude/settings.json` — registers each script under its event/matcher
-- `scripts/test-hooks.sh` — smoke test (13 cases, all base64-encoded so the
-  test script's own bash invocation doesn't trip the allowlist)
+- `scripts/test-hooks.sh` — smoke test (base64-encoded payloads so the
+  test script's own bash invocation doesn't trip the guard)
 
 ## Stdin JSON shape per event
 
@@ -48,7 +48,6 @@ We don't use this richer form yet — exit-code semantics suffice.
 ## `.claude/policy.yaml` schema
 
 ```yaml
-bash_allowlist: [<glob-pattern>, ...]   # full-command match (anchored)
 forbidden_paths: [<glob-pattern>, ...]  # path match; ** matches across slashes
 forbidden_patterns: [<regex>, ...]      # extended regex; matched against new content
 verify_command: "./verify.sh"           # informational; hook always invokes ./verify.sh
@@ -60,7 +59,10 @@ budget_usd_subagent: <number>           # consumed by autonomous-run.sh
 budget_usd_team: <number>               # consumed by autonomous-run.sh
 ```
 
-Glob → regex conversion (used in two hooks):
+Bash command safety is **not** configured here — it lives in
+`pre-tool-bash-guard.sh` as a hardcoded denylist (see below).
+
+Glob → regex conversion (used by `policy-guard.sh` for `forbidden_paths`):
 
 | Glob | Regex |
 |---|---|
@@ -71,18 +73,27 @@ Glob → regex conversion (used in two hooks):
 
 Patterns are anchored (`^...$`).
 
-## Hard denylist (independent of allowlist)
+## Bash command guard
 
-Even if a pattern matches the bash allowlist, these are blocked:
-- `rm -rf /`, `rm -rf $HOME`, `rm -rf ~`
-- Fork bombs (`:(){:|:&};:`)
+`pre-tool-bash-guard.sh` enforces a **denylist**: a Bash command is
+allowed unless it matches a dangerous pattern. The whole command string
+is scanned as-is, so compound commands (pipes, `&&`, `||`, `;`,
+subshells, brace groups) and command substitution all pass through —
+there is no command splitter that could misfire on valid shell.
+
+Blocked patterns (`DANGER_PATTERNS` in the script):
+- recursive `rm` of `/`, `~`, or `$HOME`
+- fork bombs (`:(){:|:&};:`)
 - `mkfs.*`
 - `dd if=/dev/(zero|random|urandom) of=/dev/...`
-- Output redirect to `/dev/sda` and similar
-- World-writable recursive chmod on root (`chmod -R 777 /`)
-- Blind pipe-to-shell (`curl ... | sh`, `wget ... | sh`)
+- output redirect onto a raw disk device (`/dev/sda` and similar)
+- world-writable recursive chmod on root (`chmod -R 777 /`)
+- blind pipe-to-shell (`curl ... | sh`, `wget ... | sh`)
+- bash reverse shells (`/dev/tcp/...`)
 
-Defined in `pre-tool-bash-allowlist.sh` as `DANGER_PATTERNS`.
+This is deliberately permissive. The threat model is an autonomous run
+destroying its environment by mistake — not a motivated adversary, whom
+a regex denylist cannot stop. There is no bash *allowlist*.
 
 ## Settings registration
 
@@ -92,7 +103,7 @@ Defined in `pre-tool-bash-allowlist.sh` as `DANGER_PATTERNS`.
       "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-context.sh" }] }],
   "PreToolUse": [
     { "matcher": "Bash",
-      "hooks": [{ "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-tool-bash-allowlist.sh" }] },
+      "hooks": [{ "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-tool-bash-guard.sh" }] },
     { "matcher": "Write|Edit",
       "hooks": [{ "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/policy-guard.sh" }] },
     { "matcher": "Bash",
@@ -106,21 +117,21 @@ Defined in `pre-tool-bash-allowlist.sh` as `DANGER_PATTERNS`.
 ```
 
 `$CLAUDE_PROJECT_DIR` is expanded by Claude Code at hook-load time. The
-two PreToolUse(Bash) entries chain: bash-allowlist runs first; if it
+two PreToolUse(Bash) entries chain: bash-guard runs first; if it
 allows, pre-commit-verify runs and (only on `git commit` invocations)
 runs `./verify.sh`. Either can block.
 
 ## Test plan
 
-`scripts/test-hooks.sh` exercises 13 cases (base64-encoded payloads to
-avoid the test script's own `bash` call tripping the live allowlist when
-hooks are registered). Run it whenever `policy.yaml` or any hook script
-is modified.
+`scripts/test-hooks.sh` exercises every hook with base64-encoded
+payloads (so the test script's own `bash` call doesn't trip the live
+guard when hooks are registered). Run it whenever `policy.yaml` or any
+hook script is modified.
 
 ```
 $ bash scripts/test-hooks.sh
 …
-passed=13  failed=0
+passed=24  failed=0
 ```
 
 ## Known limitations / future work
@@ -135,6 +146,7 @@ passed=13  failed=0
   transcript tail with a best-effort `jq` query; format may shift across
   Claude Code versions.
 - The hook system **applies to humans too** when settings.json is
-  registered. If a human dev finds the bash allowlist blocking normal
-  work, edit `.claude/policy.yaml` (broaden allowlist) or add a personal
-  override in `.claude/settings.local.json` (gitignored).
+  registered. If the bash guard blocks a command a human dev needs,
+  loosen the matching `DANGER_PATTERNS` entry in
+  `pre-tool-bash-guard.sh`, or add a personal override in
+  `.claude/settings.local.json` (gitignored).

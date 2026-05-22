@@ -68,7 +68,7 @@ done
 
 echo
 echo "=== [plugin] Hooks (executable) ==="
-for h in session-start-context pre-tool-bash-allowlist policy-guard pre-commit-verify on-stop-summary on-subagent-complete; do
+for h in session-start-context pre-tool-bash-guard policy-guard pre-commit-verify on-stop-summary on-subagent-complete; do
   check "hooks/$h.sh executable" "test -x $PLUGIN_ROOT/hooks/$h.sh"
 done
 

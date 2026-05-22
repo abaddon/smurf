@@ -37,7 +37,7 @@ Current keys:
 
 - `max_parallel_subagents`, `max_turns_orchestrator`, `max_turns_subagent`
 - `budget_usd_subagent`, `budget_usd_team`, `max_qa_iterations`
-- `bash_allowlist`, `forbidden_paths`, `forbidden_patterns`, `verify_command`
+- `forbidden_paths`, `forbidden_patterns`, `verify_command`
 - `wiki.{enabled,index_path,log_path,health_path,lint_orphan_days}` — see
   `docs/specs/15-wiki.md`. When `wiki.enabled: true` (the shipped default),
   wave 7 regenerates the index, every run appends a row to the log, and

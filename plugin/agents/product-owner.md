@@ -121,10 +121,9 @@ Each story file must include in a trailing markdown block:
 - The created story files (one per Feature).
 - After writing the story file(s), `git add` them and commit with
   `docs(story): add <sprint-id> story file(s)` before exiting. The
-  developer wave will not pick up untracked stories. Bash is gated at
-  runtime by `bash_allowlist` in the active `policy.yaml` (project
-  override or plugin default); only `git add`, `git commit`, and
-  `git status` are needed for this step.
+  developer wave will not pick up untracked stories. Only `git add`,
+  `git commit`, and `git status` are needed for this step; the
+  pre-commit-verify hook runs `verify.sh` before the commit lands.
 - Final chat message: a markdown table with columns
   `id | title | priority | source` (one row per story produced), plus
   the commit SHA on a final line.

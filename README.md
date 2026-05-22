@@ -176,8 +176,6 @@ your project's `.claude/policy.yaml`.
 
 - New project rule? Add a regex to `forbidden_patterns` in your host's
   `.claude/policy.yaml` (override).
-- New tooling? Extend `bash_allowlist` in your host's
-  `.claude/policy.yaml`.
 - New role or skill? Contribute it to the plugin: drop
   `agents/<name>.md` or `skills/<name>/SKILL.md` inside the plugin
   repo and reinstall.

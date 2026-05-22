@@ -1,73 +1,12 @@
 # Smurf orchestrator — operational policy
-# Single source of truth for caps, allowlists, and project-specific guardrails.
+# Single source of truth for caps and project-specific guardrails.
 # Hooks (Phase 3) read this file; agents must consult it before acting.
 
-# Bash commands the orchestrator and subagents may execute.
-# Patterns are glob-style; matched against the full command string.
-bash_allowlist:
-  # Version control + GitHub CLI
-  - "git *"
-  - "gh *"
-  # Project verify shim — agents call only this. The " *" tail also permits
-  # arguments and redirects (e.g. `./verify.sh 2>&1`); verify.sh forwards "$@".
-  - "./verify.sh *"
-  # Curl, restricted to the OpenRouter endpoint marketing/sales-feedback use
-  - "curl https://openrouter.ai/api/v1/*"
-  # Common dev tooling agents and humans both rely on
-  - "bash *"
-  - "sh *"
-  - "chmod *"
-  - "mkdir *"
-  - "ls *"
-  - "find *"
-  - "cat *"
-  - "echo *"
-  - "test *"
-  - "[*"
-  - "cp *"
-  - "mv *"
-  # `rm *` is allowed; the hook's hard denylist still blocks `rm -rf /` and similar.
-  - "rm *"
-  - "diff *"
-  - "date *"
-  - "head *"
-  - "tail *"
-  - "wc *"
-  - "sort *"
-  - "uniq *"
-  - "tr *"
-  - "sed *"
-  - "awk *"
-  - "grep *"
-  - "tee *"
-  - "yq *"
-  - "jq *"
-  # Build/run for typical stacks (project owner narrows as needed)
-  - "python3 *"
-  - "python *"
-  - "pip *"
-  - "npm *"
-  - "pnpm *"
-  - "yarn *"
-  - "node *"
-  - "go *"
-  - "cargo *"
-  - "rustc *"
-  - "make *"
-  - "mvn *"
-  - "gradle *"
-  - "docker *"
-  - "kubectl *"
-  - "helm *"
-  - "kubeconform *"
-  - "scripts/*"
-  # Shell builtins / control we should not block
-  - "set *"
-  - "export *"
-  - "source *"
-  - "true"
-  - "false"
-  - "exit *"
+# Bash command safety is enforced by hooks/pre-tool-bash-guard.sh, which
+# scans each command against a hardcoded denylist of dangerous patterns
+# (see DANGER_PATTERNS in that script). There is no bash allowlist: any
+# command that does not match a danger pattern is permitted, compound
+# commands included.
 
 # Paths agents may never write to. Glob patterns. (Plugin defaults — a
 # project may override by writing its own .claude/policy.yaml.)
