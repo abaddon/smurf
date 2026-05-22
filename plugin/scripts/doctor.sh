@@ -90,9 +90,11 @@ done
 
 echo
 echo "=== [plugin] Tools available on PATH ==="
-for t in jq yq python3 git timeout; do
+for t in jq yq python3 git; do
   check "$t on PATH" "command -v $t > /dev/null"
 done
+warn "timeout or gtimeout on PATH (optional — pure-shell watchdog used otherwise)" \
+  "command -v timeout > /dev/null || command -v gtimeout > /dev/null"
 warn "claude on PATH (required for autonomous runs)" "command -v claude > /dev/null"
 warn "gh on PATH (required for devops PR creation)" "command -v gh > /dev/null"
 warn "curl on PATH (required for OpenRouter shell-out)" "command -v curl > /dev/null"

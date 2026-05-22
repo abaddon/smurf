@@ -86,8 +86,88 @@ echo "$GOAL" > "$RUN_DIR/goal.md"
   echo "git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
 } > "$RUN_DIR/meta.txt"
 
+# ---- portable watchdog ----
+# GNU `timeout` is absent on stock macOS. Prefer it (or Homebrew coreutils'
+# `gtimeout`) when present; otherwise fall back to a pure-shell watchdog so
+# the plugin needs zero extra installs. All paths SIGTERM the command on
+# expiry and yield exit code 124 — matching GNU `timeout`'s contract.
+WD_CMD_PID=""   # PID of the wrapped command (pure-shell path only)
+WD_PID=""       # PID of the watchdog subshell (pure-shell path only)
+
+duration_to_secs() {
+  # Accepts NNN[s|m|h|d] — the suffixes GNU `timeout` understands.
+  local d="$1"
+  if [[ "$d" =~ ^([0-9]+)([smhd]?)$ ]]; then
+    local n="${BASH_REMATCH[1]}" u="${BASH_REMATCH[2]}"
+    case "$u" in
+      ""|s) echo "$n" ;;
+      m)    echo "$(( n * 60 ))" ;;
+      h)    echo "$(( n * 3600 ))" ;;
+      d)    echo "$(( n * 86400 ))" ;;
+    esac
+    return 0
+  fi
+  return 1
+}
+
+run_with_watchdog() {
+  local duration="$1"; shift
+
+  local timeout_bin=""
+  if command -v timeout >/dev/null 2>&1; then
+    timeout_bin="timeout"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    timeout_bin="gtimeout"
+  fi
+  if [ -n "$timeout_bin" ]; then
+    "$timeout_bin" --signal=TERM "$duration" "$@"
+    return $?
+  fi
+
+  # Pure-shell fallback: background the command, arm a killer subshell.
+  local secs
+  if ! secs=$(duration_to_secs "$duration"); then
+    echo "[watchdog] unparseable duration '$duration'; running without a watchdog" >&2
+    "$@"
+    return $?
+  fi
+
+  local fired="$RUN_DIR/.watchdog-fired"
+  rm -f "$fired"
+
+  "$@" &
+  WD_CMD_PID=$!
+
+  (
+    sleep "$secs"
+    : > "$fired"
+    kill -TERM "$WD_CMD_PID" 2>/dev/null
+    sleep 10
+    kill -KILL "$WD_CMD_PID" 2>/dev/null
+  ) &
+  WD_PID=$!
+
+  wait "$WD_CMD_PID" 2>/dev/null
+  local rc=$?
+
+  # Command returned first — retire the watchdog subshell.
+  kill -TERM "$WD_PID" 2>/dev/null
+  wait "$WD_PID" 2>/dev/null || true
+  WD_CMD_PID=""
+  WD_PID=""
+
+  if [ -e "$fired" ]; then
+    rm -f "$fired"
+    return 124
+  fi
+  return "$rc"
+}
+
 # ---- SIGTERM trap → partial summary ----
 on_term() {
+  # Tear down pure-shell watchdog children, if any are in flight.
+  [ -n "$WD_PID" ]     && kill -TERM "$WD_PID" 2>/dev/null || true
+  [ -n "$WD_CMD_PID" ] && kill -TERM "$WD_CMD_PID" 2>/dev/null || true
   cat > "$RUN_DIR/partial-summary.json" <<EOF
 {"status":"terminated","reason":"timeout_or_signal","ts":"$(date -u +%FT%TZ)","run_dir":"$RUN_DIR"}
 EOF
@@ -111,7 +191,7 @@ fi
 ALLOWED_TOOLS="Read,Write,Edit,Bash(./verify.sh),Bash(git *),Bash(gh *),Bash(curl https://openrouter.ai/api/v1/*),Bash(python3 *),Bash(jq *),Bash(yq *),TodoWrite,mcp__github"
 
 set +e
-timeout --signal=TERM "$WATCHDOG" \
+run_with_watchdog "$WATCHDOG" \
   claude -p "$PROMPT" \
     --allowedTools "$ALLOWED_TOOLS" \
     --max-turns 200 \
@@ -120,7 +200,7 @@ timeout --signal=TERM "$WATCHDOG" \
 RC=$?
 set -e
 
-# `timeout` exits 124 when the watchdog fires; it does not propagate SIGTERM
+# The watchdog yields exit 124 when it fires; it does not propagate SIGTERM
 # to this script, so the trap above won't run. Explicitly handle the case.
 if [ "$RC" -eq 124 ]; then
   cat > "$RUN_DIR/partial-summary.json" <<EOF

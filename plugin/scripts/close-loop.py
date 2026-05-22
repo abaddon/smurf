@@ -137,6 +137,7 @@ def main() -> int:
         "--max-turns", "20",
         "--max-budget-usd", "1.50",
         "--output-format", "stream-json",
+        "--verbose",  # required by `claude -p` whenever output-format is stream-json
     ]
 
     print(f"[close-loop] writing {out_path}")
