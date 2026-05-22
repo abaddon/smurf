@@ -44,10 +44,13 @@ claude
 
 `/smurf:init` runs `scripts/init-project.sh` and creates only what is
 missing: `verify.sh` (no-op shim), `docs/rigor-level.md` (`prototype`
-by default), `.claude/runs/next-goal.md` (empty), and gitignore lines
-for `.claude/runs/`, `.claude/worktrees/`, `.claude/settings.local.json`.
-Existing files are never overwritten. The host project's `CLAUDE.md`
-is never touched.
+by default), `.claude/runs/next-goal.md` (empty), gitignore lines
+for `.claude/runs/`, `.claude/worktrees/`, `.claude/settings.local.json`,
+and an allow rule in `.claude/settings.local.json` so `/smurf:nightly-run`
+can launch `autonomous-run.sh` without an auto-mode permission denial.
+Existing files are never overwritten — the allow rule is merged into any
+existing `.claude/settings.local.json`, and the host project's
+`CLAUDE.md` is never touched.
 
 ### Adopting smurf into an established codebase
 
