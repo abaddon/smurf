@@ -1,6 +1,6 @@
 {
   "name": "smurf",
-  "version": "1.0.0.17",
+  "version": "1.0.0.18",
   "description": "Self-agentic orchestrator: product-owner → architect → developer → QA → devops → marketing waves on Claude Code.",
   "author": { "name": "abaddon" },
   "homepage": "https://github.com/abaddon/smurf",
