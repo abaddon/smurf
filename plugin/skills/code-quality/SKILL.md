@@ -9,7 +9,7 @@ These rules apply regardless of stack. Project-specific overrides go in
 the host project's `.claude/policy.yaml` `forbidden_patterns` (which
 overrides the plugin default at `${CLAUDE_PLUGIN_ROOT}/policy.yaml`).
 Smurf's own house rules live in `${CLAUDE_PLUGIN_ROOT}/smurf.md`
-`PROJECT_INVARIANTS`.
+`HOUSE RULES`.
 
 ## Principles
 

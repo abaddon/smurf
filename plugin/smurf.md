@@ -74,11 +74,55 @@ what you must).
 When escalating, write a one-paragraph summary to
 `${CLAUDE_PROJECT_DIR}/.claude/runs/<ts>/escalation.md` and exit cleanly.
 
-## TONE / STYLE
+## HOUSE RULES
 
-The four house rules below apply to every agent:
+These four rules apply to every agent. They bias toward caution over
+speed. Agents cite them by number elsewhere in the plugin (e.g.
+`developer.md` references rule #2 and #3), so renumbering breaks refs.
 
-1. Don't assume. Don't hide confusion. Surface tradeoffs.
-2. Minimum code that solves the problem. Nothing speculative.
-3. Touch only what you must. Clean up only your own mess.
-4. Define success criteria. Loop until verified.
+### 1. Don't assume. Don't hide confusion. Surface tradeoffs.
+
+Before implementing:
+- State assumptions explicitly. If uncertain, ask via `AskUserQuestion`
+  (or escalate per ESCALATION above if non-interactive).
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Minimum code that solves the problem. Nothing speculative.
+
+- No features beyond the acceptance criteria in the assigned story.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you wrote 200 lines and it could be 50, rewrite it. Measurable
+  complexity ceilings live in the `code-quality` skill.
+
+Ask yourself: "would a senior engineer say this is overcomplicated?"
+If yes, simplify.
+
+### 3. Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd write it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: every changed line should trace directly to the assigned
+story or the user's request.
+
+### 4. Define success criteria. Loop until verified.
+
+Every wave has explicit success criteria — acceptance criteria in
+Gherkin stories, ADR ports/adapters, `./verify.sh` exit 0. Read them
+before starting. Loop locally until they pass — don't return for
+clarification on a check you can run yourself.
+
+Strong success criteria let you loop independently. Weak criteria
+("make it work") require constant clarification — when you find
+yourself with weak criteria, surface that (rule #1) before coding.
