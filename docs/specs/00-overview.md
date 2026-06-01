@@ -28,6 +28,7 @@ plan is `docs/research.md` — Architettura A from §3.
 | 13 | Feedback loop (`close-loop.py`) | Phase 7 |
 | 14 | Iteration mechanism + budgets | Phase 6a |
 | 15 | Wiki layer (index + log + lint) | Phase 8 |
+| 16 | Dynamic Workflows + `/ultrareview` | written |
 
 ## Reading order
 

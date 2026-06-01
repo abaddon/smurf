@@ -141,6 +141,19 @@ Force Agent-Teams (peer-to-peer wave 3):
 Agent Teams mode requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in
 your project's `.claude/settings.local.json`.
 
+Dynamic Workflows (experimental):
+
+```bash
+> /smurf:kickoff-workflow "<goal with many independent parallel features>"
+```
+
+Research-preview. Workflows must not be disabled (no `disableWorkflows`
+in project settings, no `CLAUDE_CODE_DISABLE_WORKFLOWS=1` in your
+environment) and need a workflows-capable host CLI (Claude Code
+>= 2.1.111) on Opus 4.8. This gate is settings/version-based, not a tool
+probe — Dynamic Workflows has no tool surface to verify against (unlike
+Agent Teams).
+
 ## Configure
 
 - `${CLAUDE_PLUGIN_ROOT}/smurf.md` — Smurf's operating manual.
@@ -157,6 +170,10 @@ your project's `.claude/settings.local.json`.
 - `verify.sh` — your project's test/build entrypoint. Replace the no-op
   default.
 - `.mcp.json` — MCP servers for the project (`github` is the default).
+- `review.ultrareview` in `policy.yaml` — `auto` runs `/ultrareview`
+  when the host supports it; `off` never does. Caveat: `/ultrareview`
+  sends code OFF-BOX to a cloud multi-agent reviewer. `budget_usd_workflow`
+  and `max_workflow_subagents` cap Dynamic-Workflow wave-3 fan-out.
 
 ### Wiki layer
 
@@ -216,6 +233,8 @@ All 7 phases shipped:
 - Phase 6a: Agent Teams wave-3 with architect-advisor.
 - Phase 6b: OpenRouter shell-out for marketing/sales.
 - Phase 7: `close-loop.py` cross-run feedback + 14 specs.
+- Phase 9: Dynamic Workflows (`/smurf:kickoff-workflow`) + `/ultrareview`
+  QA integration (experimental, research-preview; gate/wrap/delegate only).
 
 See `docs/specs/00-overview.md` for the spec index and
 `docs/operations.md` for runbooks.

@@ -74,7 +74,7 @@ done
 
 echo
 echo "=== [plugin] Slash commands ==="
-for c in init kickoff kickoff-team nightly-run close-loop; do
+for c in init kickoff kickoff-team kickoff-workflow nightly-run close-loop; do
   check "commands/$c.md exists" "test -f $PLUGIN_ROOT/commands/$c.md"
 done
 
@@ -120,6 +120,8 @@ echo
 echo "=== [project] Settings ==="
 warn "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in user settings (required for /smurf:kickoff-team)" \
   "jq -e '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS == \"1\"' $PROJECT_ROOT/.claude/settings.local.json $PROJECT_ROOT/.claude/settings.json 2>/dev/null | grep -q true"
+warn "CLAUDE_CODE_DISABLE_WORKFLOWS not set to 1 (workflows enabled for /smurf:kickoff-workflow)" \
+  "test \"\$(printenv CLAUDE_CODE_DISABLE_WORKFLOWS)\" != 1"
 
 echo
 echo "=== Result ==="

@@ -49,7 +49,7 @@ Decompose the goal into waves:
 - **Wave 2 — Design** (REQUIRED for `production`, OPTIONAL for
   `prototype`): delegate to `architect`. Output: ADR in
   `docs/adr/NNNN-*.md` with ports/adapters list.
-- **Wave 3 — Implement** — TWO modes:
+- **Wave 3 — Implement** — THREE modes:
   - **Subagent mode (default, via `/kickoff`)**: delegate to `developer`
     one story per invocation; up to `max_parallel_subagents` in parallel
     for independent stories. Workers do not communicate peer-to-peer.
@@ -69,6 +69,33 @@ Decompose the goal into waves:
     design Q&A; qa-engineer may `SendMessage developer` with failure
     detail. When all tasks reach `done`, `TeamDelete` to release the team.
     Use the `budget_usd_team` tier from `policy.yaml`.
+  - **Dynamic Workflows mode (via `/kickoff-workflow`)**: gate first
+    (read-only). (1) Read `${CLAUDE_PROJECT_DIR}/.claude/settings.json` AND
+    `${CLAUDE_PROJECT_DIR}/.claude/settings.local.json` → FAIL the gate if
+    either contains `"disableWorkflows": true`. (2)
+    `Bash("printenv CLAUDE_CODE_DISABLE_WORKFLOWS")` → FAIL if it prints `1`.
+    (3) `Bash("claude --version")` → FAIL if below 2.1.111. The CLI gate =
+    require `claude --version` >= 2.1.111 AND model == Opus 4.8 (2.1.111 is
+    the concrete, honest proxy for "workflows-capable line"; this is a version
+    proxy, not a tool probe). On miss, do NOT silently fall through — append
+    one line to `.claude/runs/<ts>/orchestrator.log`:
+    `wave-3 dynamic-workflow unavailable reason=<...> action=bail`, then bail
+    with this user-facing message verbatim: "Dynamic-Workflows mode requires
+    (1) workflows not disabled — no `disableWorkflows: true` in your project
+    settings and no `CLAUDE_CODE_DISABLE_WORKFLOWS=1` in your environment —
+    and (2) a workflows-capable host CLI (Claude Code >= 2.1.111) on Opus 4.8.
+    This gate is settings/version-based, not a tool probe: Dynamic Workflows
+    has no tool surface to verify against (unlike Agent Teams). Reason:
+    <reason>. Re-run with `/smurf:kickoff-team` for peer-to-peer wave 3 or
+    `/smurf:kickoff` for subagent mode; or enable workflows and re-run
+    `/smurf:kickoff-workflow`." On pass, express wave 3 ONLY as a host dynamic
+    workflow by composing a wave-3 prompt that contains the literal `workflow`
+    keyword plus the story DAG. Apply the engage rule (dynamic-workflow wave-3
+    fan-out is only worth it when story count > `max_parallel_subagents`;
+    otherwise prefer plain subagent fan-out, which is cheaper), the
+    `budget_usd_workflow` tier from `policy.yaml`, and the advisory
+    `max_workflow_subagents` cap. Note: this gate is settings/version-based,
+    not a tool probe — Dynamic Workflows exposes no tools to verify against.
 
   `TeamCreate`/`TeamDelete`/`SendMessage`/`Task*` tools are gated on
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` being set in the user's
@@ -105,6 +132,20 @@ Decompose the goal into waves:
     same `qa-engineer` invocation, instruct it to also run integration-
     grade checks declared in `verify.sh` (the project owner gates
     integration tests behind a `--integration` flag in `verify.sh`).
+
+  **ultrareview supplementary review (optional)**: the `qa-engineer` is the
+  PRIMARY path for an OPTIONAL `/ultrareview` supplementary review, gated on
+  resolved policy `review.ultrareview == auto` AND host CLI >= 2.1.111. A
+  subagent cannot "type" a slash command — programmatic `/ultrareview`
+  invocation depends on the host exposing a `SlashCommand`-style tool. If
+  subagents cannot invoke `/ultrareview`, the ORCHESTRATOR runs it in its own
+  session after wave 4a, gated identically, and attaches the output to the
+  iteration loop / run summary. If `review.ultrareview` is `off` OR the host
+  lacks it, SKIP SILENTLY and append one line to
+  `.claude/runs/<ts>/orchestrator.log`:
+  `wave-4b ultrareview unavailable reason=<...> action=skip` — never fail or
+  block the wave. Acceptance-criteria + `verify.sh` remain the sole GREEN/RED
+  authority; ultrareview findings are advisory.
 - **Wave 5 — Deploy**: delegate to `devops`. CI/CD updates, never deploys
   to prod without human approval.
 - **Wave 6 — Promote**: delegate to `marketing` (release notes) and
