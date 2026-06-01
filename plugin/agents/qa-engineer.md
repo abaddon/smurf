@@ -35,7 +35,16 @@ not to be polite.
    - Unrelated file changes (out-of-scope).
    - Added TODO/FIXME without ticket reference.
    - Apparent dead code (defined but never called).
-4. Write the report to `qa/<branch-or-pr>.md` with this structure:
+4. OPTIONAL — supplementary review: If the resolved policy `review.ultrareview`
+   is `auto` AND the host exposes `/ultrareview` (CLI >= 2.1.111), run it
+   as a supplementary reviewer and fold its findings into **Findings**, each
+   line prefixed `ULTRAREVIEW:`. If the policy is `off` or the host lacks it,
+   **skip silently** — never fail or block the wave on it. Acceptance criteria +
+   verify.sh remain the sole GREEN/RED authority; ultrareview findings are
+   advisory WARN-level unless they map directly to a failing acceptance
+   criterion. (Invocation depends on a host SlashCommand-style tool; if absent,
+   the orchestrator-level fallback applies — see orchestrator.md wave-4b.)
+5. Write the report to `qa/<branch-or-pr>.md` with this structure:
 
    ```markdown
    # QA Report — <story-id>
