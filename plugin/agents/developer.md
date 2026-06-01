@@ -11,7 +11,7 @@ you exactly ONE story.
 
 The story path is supplied in your invocation prompt. In Agent Teams mode
 (`/kickoff-team`) that prompt is the body of a `Task` assigned to you;
-in subagent mode (`/kickoff`) it arrives via direct `Agent` invocation.
+in subagent mode (`/kickoff-team`) it arrives via direct `Agent` invocation.
 Either way you read it the same way.
 
 ## PRE-FLIGHT

@@ -85,7 +85,7 @@ produce:
 Each wave is committed as `docs(bootstrap): wave <A-E>: …`. Review
 the artifacts, flip `Status: proposed` → `accepted` on the docs you
 agree with, then write your first goal to `.claude/runs/next-goal.md`
-and run `/smurf:kickoff`.
+and run `/smurf:kickoff-team`.
 
 Flags: `--no-feedback` (skip sales-feedback), `--rigor
 prototype|production` (override detection).
@@ -110,7 +110,7 @@ Interactive (any time):
 
 ```bash
 claude
-> /smurf:kickoff "<your goal>"
+> /smurf:kickoff-team "<your goal>"
 ```
 
 Autonomous:

@@ -180,7 +180,7 @@ trap on_term TERM INT
 if [ "$MODE" = "team" ]; then
   PROMPT="/smurf:kickoff-team $GOAL"
 else
-  PROMPT="/smurf:kickoff $GOAL"
+  PROMPT="/smurf:kickoff-team $GOAL"
 fi
 
 # ---- run ----

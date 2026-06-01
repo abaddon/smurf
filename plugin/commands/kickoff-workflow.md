@@ -37,9 +37,10 @@ your project settings and no `CLAUDE_CODE_DISABLE_WORKFLOWS=1` in your
 environment — and (2) a workflows-capable host CLI (Claude Code >= 2.1.111)
 on Opus 4.8. This gate is settings/version-based, not a tool probe: Dynamic
 Workflows has no tool surface to verify against (unlike Agent Teams). Reason:
-<reason>. Re-run with `/smurf:kickoff-team` for peer-to-peer wave 3 or
-`/smurf:kickoff` for subagent mode; or enable workflows and re-run
-`/smurf:kickoff-workflow`." Append to `.claude/runs/<ts>/orchestrator.log`:
+<reason>. Re-run with `/smurf:kickoff-team` (the default — subagent mode,
+escalating wave 3 to an Agent Team when your host supports it); or enable
+workflows and re-run `/smurf:kickoff-workflow`." Append to
+`.claude/runs/<ts>/orchestrator.log`:
 `wave-3 dynamic-workflow unavailable reason=<...> action=bail`.
 Do NOT silently fall through to subagent mode — the user explicitly asked for
 Dynamic Workflows; make the failure visible.

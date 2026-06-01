@@ -4,7 +4,7 @@ Ubiquitous language for the orchestrator itself. Add entries as the
 project's domain grows. Each entry: term — definition (one paragraph).
 
 - **Goal** — A natural-language task written into `.claude/runs/next-goal.md`
-  and consumed by the orchestrator on `/smurf:kickoff` or by
+  and consumed by the orchestrator on `/smurf:kickoff-team` or by
   `autonomous-run.sh`. One goal per run.
 
 - **Wave** — A discrete phase of a single run: Product, Design, Implement,
