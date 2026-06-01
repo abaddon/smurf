@@ -96,7 +96,7 @@ A story is **orphan** if:
 
 ## Wave 7 contract
 
-After wave 6, **regardless of `/kickoff` vs `/kickoff-team`**, the
+After wave 6, **regardless of `/kickoff-team` vs `/kickoff-workflow`**, the
 orchestrator issues exactly one Bash call:
 
 ```
@@ -132,7 +132,7 @@ watchdogged; `bootstrap` by `/smurf:bootstrap` wave F.
 `/smurf:bootstrap` is a one-shot reverse-engineering run, not a
 goal-driven orchestrator run. Without explicit indexing it would
 produce ADRs / stories / a feedback file that the wiki layer
-would not surface until the user's first `/smurf:kickoff`. To
+would not surface until the user's first `/smurf:kickoff-team`. To
 close that gap, bootstrap defines **wave F** (see
 `plugin/commands/bootstrap.md`), which runs at the very end and:
 

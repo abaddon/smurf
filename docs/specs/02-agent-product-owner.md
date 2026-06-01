@@ -81,13 +81,13 @@ See `.claude/skills/gherkin-stories/SKILL.md` for the exact template.
 
 ## Test plan
 
-1. Run `/kickoff "<any goal>"` with `docs/feedback/<today>.md` populated.
+1. Run `/kickoff-team "<any goal>"` with `docs/feedback/<today>.md` populated.
 2. Confirm at least one story file's `## Source` block names
    `docs/feedback/<today>.md` verbatim.
 3. Confirm story file passes a Gherkin lint (visual: contains
    `Feature:`, `Scenario:`, `Given/When/Then`, the trailer with all
    four sections).
-4. Clarification path: run `/kickoff` with a deliberately vague goal
+4. Clarification path: run `/kickoff-team` with a deliberately vague goal
    (e.g. `"make it faster"`). Confirm the PO triggers an
    `AskUserQuestion` round before any `.feature` file is written, and
    that the resulting story includes a `## Clarifications` block

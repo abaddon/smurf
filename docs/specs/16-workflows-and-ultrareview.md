@@ -17,9 +17,9 @@ produces, what it must never do.
 ### The command
 
 A new, additive command: `/smurf:kickoff-workflow`. It does NOT replace
-the existing wave-3 fan-out. It is a **third** dispatch mode alongside
-`/smurf:kickoff` (subagent fan-out) and `/smurf:kickoff-team`
-(peer-to-peer Agent Team). Wave 3 only.
+the existing wave-3 fan-out. It is a dispatch mode alongside
+`/smurf:kickoff-team` (the default: subagent baseline, with peer-to-peer
+Agent Team for wave 3). Wave 3 only.
 
 Delegation is by the **`workflow` keyword** in the orchestrator's
 prompt — the host triggers a dynamic workflow when that keyword
@@ -56,8 +56,8 @@ emitting verbatim:
 > gate is settings/version-based, not a tool probe: Dynamic Workflows
 > has no tool surface to verify against (unlike Agent Teams). Reason:
 > <reason>. Re-run with `/smurf:kickoff-team` for peer-to-peer wave 3
-> or `/smurf:kickoff` for subagent mode; or enable workflows and re-run
-> `/smurf:kickoff-workflow`.
+> (or subagent mode when Agent Teams are unavailable); or enable
+> workflows and re-run `/smurf:kickoff-workflow`.
 
 And it logs to `.claude/runs/<ts>/orchestrator.log`, verbatim:
 
@@ -172,5 +172,5 @@ degrades quietly.
 - **Never silently fall through the workflow gate to subagent mode.** A
   gate miss is a visible bail.
 - **Never replace the existing wave-3 fan-out.**
-  `/smurf:kickoff-workflow` is additive — a third command beside
-  `/smurf:kickoff` and `/smurf:kickoff-team`.
+  `/smurf:kickoff-workflow` is additive — a command beside the
+  `/smurf:kickoff-team` default.

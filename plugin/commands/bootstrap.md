@@ -11,7 +11,7 @@ spawn the standard smurf specialist subagents (`developer`, `devops`,
 `sales-feedback`, `product-owner`, `architect`, `qa-engineer`) with
 explicit BOOTSTRAP-MODE prompts that override their default
 `next-goal.md`-driven contracts. When you finish, the project has the
-artifacts smurf needs to make good decisions on the next `/smurf:kickoff`.
+artifacts smurf needs to make good decisions on the next `/smurf:kickoff-team`.
 
 The bootstrap targets `${CLAUDE_PROJECT_DIR:-$PWD}`. Treat the source
 tree as read-only ground truth. Do not refactor code. Do not invent
@@ -341,7 +341,7 @@ No subagent. Using the signals from step 0.4 and the wave outputs:
    - next step: "Review `docs/bootstrap/`, accept ADRs/stories by
      editing `Status: proposed` → `accepted`, then write your
      first goal to `.claude/runs/next-goal.md` and run
-     `/smurf:kickoff`."
+     `/smurf:kickoff-team`."
 
 Stage and commit (three separate Bash calls; do NOT add
 `.claude/runs/<run-id>/summary.md` — `.claude/runs/` is gitignored):
@@ -356,7 +356,7 @@ Stage and commit (three separate Bash calls; do NOT add
 
 The bootstrap just produced ADRs, stories, and a feedback file —
 exactly what `build-wiki-index.py` scans. Without this wave, the
-wiki index stays empty until the user's first `/smurf:kickoff`. Run
+wiki index stays empty until the user's first `/smurf:kickoff-team`. Run
 it now so the user has a populated `docs/wiki/` to navigate
 immediately.
 

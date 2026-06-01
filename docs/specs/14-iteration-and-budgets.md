@@ -22,8 +22,8 @@ sends `shutdown_response` and the orchestrator must fall back to
 re-invoking the architect as a full subagent (which loses the team
 context).
 
-In subagent mode (`/kickoff`), Layer 1 doesn't exist — workers report
-to the orchestrator only.
+In subagent mode (`/kickoff-team`'s baseline), Layer 1 doesn't exist —
+workers report to the orchestrator only.
 
 ### Layer 2: inter-wave (both modes)
 

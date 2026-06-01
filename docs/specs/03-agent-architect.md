@@ -57,7 +57,7 @@ Stop and write `.claude/runs/<ts>/escalation.md` if a story requires:
 ## Test plan
 
 1. With `rigor-level=production` and a story that introduces a new
-   port, run `/kickoff "<goal>"`.
+   port, run `/kickoff-team "<goal>"`.
 2. Confirm `docs/adr/NNNN-*.md` is created with the next sequential
    number.
 3. Confirm the ADR has all template sections; ports list maps to the

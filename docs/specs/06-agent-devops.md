@@ -60,7 +60,7 @@ Always:
 
 ## Test plan
 
-1. After a green QA, run `/kickoff` continued through wave 5. Confirm:
+1. After a green QA, run `/kickoff-team` continued through wave 5. Confirm:
    - draft PR exists in the GitHub repo,
    - PR body contains links to story, QA report, ADR (if production).
 2. Set `qa/<id>.md` status to RED manually and re-run wave 5.

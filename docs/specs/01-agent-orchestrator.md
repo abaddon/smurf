@@ -11,7 +11,7 @@ spawns workers, and writes the final run summary.
 
 | Field | Value | Why |
 |---|---|---|
-| `name` | `orchestrator` | invoked as `@orchestrator` and via `/kickoff` |
+| `name` | `orchestrator` | invoked as `@orchestrator` and via `/kickoff-team` |
 | `description` | "Top-level coordinator..." | Claude Code routes by description text |
 | `tools` | `Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task` | enough to read inputs, write summaries, run shell, track progress + `Task` for subagent dispatch |
 | `model` | `opus` | research §1.2: Agent-Teams lead requires Opus 4.6+; orchestrator is the lead |
@@ -73,8 +73,7 @@ loop:
 
 | Slash command | Wave 3 mode | Budget tier |
 |---|---|---|
-| `/kickoff <goal>` | subagents (workers don't talk to each other) | `budget_usd_subagent` |
-| `/kickoff-team <goal>` | Agent Team (`TeamCreate` with developer×N + qa + architect-advisor) | `budget_usd_team` |
+| `/kickoff-team <goal>` | Agent Team (`TeamCreate` with developer×N + qa + architect-advisor); degrades to subagents (workers don't talk to each other) when Agent Teams are unavailable | `budget_usd_team` (subagent fallback: `budget_usd_subagent`) |
 
 In Agent Team mode, the orchestrator calls:
 1. `TeamCreate` with the team roster
@@ -105,11 +104,11 @@ In Agent Team mode, the orchestrator calls:
 ## Test plan (Phase 1 acceptance)
 
 In an interactive `claude` session:
-1. `/kickoff "add scripts/version.sh that prints git rev-parse --short HEAD"`
+1. `/kickoff-team "add scripts/version.sh that prints git rev-parse --short HEAD"`
 2. Observe: orchestrator routes to product-owner → developer → qa-engineer.
 3. Modify `verify.sh` to require `version.sh` output to be exactly 7 hex
    characters.
-4. `/kickoff "rerun qa on version.sh"`.
+4. `/kickoff-team "rerun qa on version.sh"`.
 5. Expect: qa-engineer finds the failure, orchestrator re-dispatches
    developer (iteration 1 or 2), eventually green.
 6. Confirm `.claude/runs/<ts>/summary.md` records `qa_iterations` ≥ 1.

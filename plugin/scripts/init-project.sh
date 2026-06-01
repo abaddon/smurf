@@ -111,7 +111,7 @@ if [ ! -d "$TARGET/.git" ]; then
 fi
 
 echo
-echo "Done. Next: edit verify.sh, write a goal to .claude/runs/next-goal.md, run /smurf:kickoff."
+echo "Done. Next: edit verify.sh, write a goal to .claude/runs/next-goal.md, run /smurf:kickoff-team."
 echo "Wiki layer (docs/wiki/) is enabled by default; it populates on your first"
-echo "/smurf:kickoff or /smurf:bootstrap. To opt out, set wiki.enabled: false in"
+echo "/smurf:kickoff-team or /smurf:bootstrap. To opt out, set wiki.enabled: false in"
 echo ".claude/policy.yaml (see docs/specs/15-wiki.md)."

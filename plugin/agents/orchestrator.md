@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Top-level coordinator. Decomposes a goal into a wave-based DAG and delegates to specialist subagents (product-owner, architect, developer, qa-engineer, devops, marketing). Invoke with "@orchestrator: <goal>" or via /kickoff.
+description: Top-level coordinator. Decomposes a goal into a wave-based DAG and delegates to specialist subagents (product-owner, architect, developer, qa-engineer, devops, marketing). Invoke with "@orchestrator: <goal>" or via /kickoff-team.
 tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task, TeamCreate, TeamDelete, SendMessage, TaskCreate, TaskUpdate, TaskList, TaskGet
 model: opus
 color: purple
@@ -49,12 +49,15 @@ Decompose the goal into waves:
 - **Wave 2 — Design** (REQUIRED for `production`, OPTIONAL for
   `prototype`): delegate to `architect`. Output: ADR in
   `docs/adr/NNNN-*.md` with ports/adapters list.
-- **Wave 3 — Implement** — THREE modes:
-  - **Subagent mode (default, via `/kickoff`)**: delegate to `developer`
+- **Wave 3 — Implement** — TWO commands, three execution paths:
+  - **Subagent mode (the baseline)**: delegate to `developer`
     one story per invocation; up to `max_parallel_subagents` in parallel
     for independent stories. Workers do not communicate peer-to-peer.
-    QA runs after all developers report green.
-  - **Agent Teams mode (via `/kickoff-team`)**: call `TeamCreate`
+    QA runs after all developers report green. This is what every wave
+    other than wave 3 always uses, and what `/kickoff-team` falls back to
+    for wave 3 when Agent Teams are unavailable (see the capability probe
+    below).
+  - **Agent Teams mode (via `/kickoff-team`, the default kickoff)**: call `TeamCreate`
     with the roster `developer × N + qa-engineer × 1 + architect × 1`
     where the architect runs as **architect-advisor** (idle, replies
     only to `SendMessage`, max 8 turns, never edits files — see
@@ -86,8 +89,9 @@ Decompose the goal into waves:
     and (2) a workflows-capable host CLI (Claude Code >= 2.1.111) on Opus 4.8.
     This gate is settings/version-based, not a tool probe: Dynamic Workflows
     has no tool surface to verify against (unlike Agent Teams). Reason:
-    <reason>. Re-run with `/smurf:kickoff-team` for peer-to-peer wave 3 or
-    `/smurf:kickoff` for subagent mode; or enable workflows and re-run
+    <reason>. Re-run with `/smurf:kickoff-team` (the default — subagent mode,
+    escalating wave 3 to an Agent Team when your host supports it); or enable
+    workflows and re-run
     `/smurf:kickoff-workflow`." On pass, express wave 3 ONLY as a host dynamic
     workflow by composing a wave-3 prompt that contains the literal `workflow`
     keyword plus the story DAG. Apply the engage rule (dynamic-workflow wave-3
@@ -110,17 +114,21 @@ Decompose the goal into waves:
   `TeamCreate`, verify ALL of these tools are callable in the
   current session: `TeamCreate`, `TeamDelete`, `SendMessage`,
   `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`. If ANY one is
-  unavailable, do NOT proceed with Agent-Teams mode. Instead:
+  unavailable, do NOT proceed with Agent-Teams mode. Because
+  `/kickoff-team` is the default kickoff, an unavailable surface is not
+  fatal — DEGRADE gracefully to subagent mode for wave 3:
   1. Append one line to `.claude/runs/<ts>/orchestrator.log`:
-     `wave-3 agent-teams unavailable missing=<comma-separated tool names> action=bail`
-  2. Bail with this user-facing message verbatim: "Agent-Teams mode
-     requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your
-     project's `.claude/settings.local.json` AND a host CLI that
-     exposes the full `Task*` dispatch surface. Missing tools:
-     `<list>`. Re-run with `/smurf:kickoff` for subagent mode, or
-     fix the env/CLI and re-run `/smurf:kickoff-team`."
-  3. Stop. Do not silently fall through to subagent mode — the user
-     explicitly asked for Agent Teams, so make the failure visible.
+     `wave-3 agent-teams unavailable missing=<comma-separated tool names> action=degrade-to-subagent`
+  2. Run wave 3 in subagent mode (one `developer` per story, up to
+     `max_parallel_subagents` in parallel for independent stories;
+     workers do not talk peer-to-peer; QA after all report green) using
+     the `budget_usd_subagent` tier.
+  3. Surface the degradation in the run summary so it is visible: note
+     that peer-to-peer wave 3 needs
+     `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in the project's
+     `.claude/settings.local.json` AND a host CLI exposing the full
+     `Task*` dispatch surface (missing tools: `<list>`), then re-run
+     `/smurf:kickoff-team`. Do NOT degrade silently.
 
   Do NOT request these tools in your prompt at runtime — they are
   declared in this agent's frontmatter and are either present or
@@ -168,7 +176,7 @@ Decompose the goal into waves:
      `git reset HEAD docs/wiki/index.md` to unstage and skip the
      commit.
 
-  Wave 7 is identical in `/kickoff` and `/kickoff-team`. It runs in
+  Wave 7 is identical in `/kickoff-team` and `/kickoff-workflow`. It runs in
   your (the orchestrator's) main session — never as a teammate. It
   indexes whatever has landed on the project's main branch by this
   point. Worktree-side commits not yet merged are intentionally

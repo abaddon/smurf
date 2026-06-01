@@ -48,7 +48,7 @@ plan is `docs/research.md` — Architettura A from §3.
                   └────────────┬─────────┘
                                │ read at session-start hook
                                ▼
-   /kickoff <goal>  ─►  orchestrator (opus)
+   /kickoff-team <goal>  ─►  orchestrator (opus)
                                │ plan-mode → wave DAG
                                ▼
    Wave 1  product-owner    → docs/stories/<sprint>/*.feature

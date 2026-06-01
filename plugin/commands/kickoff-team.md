@@ -1,11 +1,18 @@
 ---
-description: Decompose a goal into a wave-based DAG; run wave 3 as an Agent Team so developers, qa, and an architect-advisor can communicate peer-to-peer via SendMessage.
-argument-hint: <goal description with parallel features>
+description: Default kickoff. Decompose a goal into a wave-based DAG and execute via subagents; wave 3 runs as an Agent Team (peer-to-peer SendMessage) when the host supports it, otherwise degrades to subagent mode.
+argument-hint: <goal description>
 ---
 
 @orchestrator: $ARGUMENTS
 
-Use **Agent Teams mode** for wave 3. This requires:
+This is the **default** smurf kickoff. The baseline execution model is
+**subagent mode**: every wave delegates to specialist subagents that report
+back to the orchestrator, not to each other. Waves 1, 2, 4, 5, 6, and 7
+always run in subagent mode.
+
+For **wave 3 (implement)** the orchestrator ATTEMPTS **Agent Teams mode** so
+developers, qa, and an architect-advisor can communicate peer-to-peer via
+`SendMessage`. Agent Teams require:
 - The env var `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` set in the
   user's `.claude/settings.json` (or `.claude/settings.local.json`).
 - A host CLI that exposes the FULL Agent-Teams dispatch surface
@@ -16,20 +23,25 @@ The smurf plugin manifest cannot set env vars on your behalf.
 **Capability probe — run BEFORE `TeamCreate`.** Verify every one of
 these tools is callable in the current session: `TeamCreate`,
 `TeamDelete`, `SendMessage`, `TaskCreate`, `TaskUpdate`, `TaskList`,
-`TaskGet`. If ANY are missing, do NOT call `TeamCreate` (a partial
-surface causes wave 3 to silently degrade to sequential inline
-execution). Bail with: "Agent-Teams mode requires
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your project's
-`.claude/settings.local.json` AND a host CLI that exposes the full
-`Task*` dispatch surface. Missing tools: `<list>`. Re-run with
-`/smurf:kickoff` for subagent mode, or fix the env/CLI and re-run
-`/smurf:kickoff-team`." Log the same condition to
-`.claude/runs/<ts>/orchestrator.log` as
-`wave-3 agent-teams unavailable missing=<list> action=bail`.
-Do NOT silently fall through to subagent mode — the user explicitly
-asked for Agent Teams; make the failure visible.
+`TaskGet`. A partial surface (e.g. `TeamCreate` present but `Task*`
+missing) silently degrades wave 3 to sequential inline execution, so
+treat any missing tool as "Agent Teams unavailable".
 
-For wave 3 specifically (only if the capability probe passes):
+**On a probe miss — DEGRADE, do not bail.** Because this command is the
+default kickoff, an unavailable Agent-Teams surface is not a fatal error:
+run wave 3 in **subagent mode** instead (spawn one `developer` subagent
+per story sequentially or up to `max_parallel_subagents` in parallel for
+independent stories; workers report to the orchestrator, not to each
+other; QA runs after all developers report green). Make the degradation
+visible by logging it to `.claude/runs/<ts>/orchestrator.log` as
+`wave-3 agent-teams unavailable missing=<list> action=degrade-to-subagent`,
+and note it in the run summary. Use the `budget_usd_subagent` tier for the
+degraded wave 3. If the user specifically needs peer-to-peer wave 3, the
+log line tells them to set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and use
+a host CLI exposing the full `Task*` surface, then re-run
+`/smurf:kickoff-team`.
+
+**On a probe pass — wave 3 as an Agent Team:**
 1. Call `TeamCreate` with these teammates:
    - `developer` × N (one per parallel story; each in `isolation: worktree`)
    - `qa-engineer` × 1
@@ -58,4 +70,5 @@ index reflects ground truth, not in-flight work. See
 
 Apply caps from project's `.claude/policy.yaml` (override) or the plugin
 default at `${CLAUDE_PLUGIN_ROOT}/policy.yaml`. Branch on
-`docs/rigor-level.md`.
+`docs/rigor-level.md` (must exist in the project — run `/smurf:init`
+first if not).
