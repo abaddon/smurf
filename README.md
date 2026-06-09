@@ -167,6 +167,9 @@ Agent Teams).
 - `verify.sh` — your project's test/build entrypoint. Replace the no-op
   default.
 - `.mcp.json` — MCP servers for the project (`github` is the default).
+- `qa/` — QA reports (`qa/<story-or-pr>.md`), written by the
+  qa-engineer in wave 4 (and by `/smurf:bootstrap` wave D) and
+  committed for traceability.
 - `review.ultrareview` in `policy.yaml` — `auto` runs `/ultrareview`
   when the host supports it; `off` never does. Caveat: `/ultrareview`
   sends code OFF-BOX to a cloud multi-agent reviewer. `budget_usd_workflow`

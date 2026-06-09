@@ -65,12 +65,15 @@ done
 # anchored to the version-agnostic parent dir to survive plugin updates.
 SETTINGS="$TARGET/.claude/settings.local.json"
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
-  RULE="Bash(bash \"$(dirname "$CLAUDE_PLUGIN_ROOT")/:*)"
+  # Permission rules are literal prefix matches, so cover both spellings
+  # an agent may use: path quoted (`bash "<dir>/…"`) and unquoted.
+  RULE_QUOTED="Bash(bash \"$(dirname "$CLAUDE_PLUGIN_ROOT")/:*)"
+  RULE_UNQUOTED="Bash(bash $(dirname "$CLAUDE_PLUGIN_ROOT")/:*)"
   mkdir -p "$TARGET/.claude"
   set +e
-  python3 - "$SETTINGS" "$RULE" <<'PY'
+  python3 - "$SETTINGS" "$RULE_QUOTED" "$RULE_UNQUOTED" <<'PY'
 import json, sys
-path, rule = sys.argv[1], sys.argv[2]
+path, rules = sys.argv[1], sys.argv[2:]
 try:
     with open(path) as f:
         data = json.load(f)
@@ -86,9 +89,10 @@ if not isinstance(perms, dict):
 allow = perms.setdefault("allow", [])
 if not isinstance(allow, list):
     sys.exit(3)
-if rule in allow:
-    sys.exit(1)  # already present
-allow.append(rule)
+missing = [r for r in rules if r not in allow]
+if not missing:
+    sys.exit(1)  # all already present
+allow.extend(missing)
 with open(path, "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
@@ -96,10 +100,11 @@ PY
   rc=$?
   set -e
   case "$rc" in
-    0) echo "  [ok]   .claude/settings.local.json (allow rule for autonomous-run.sh)" ;;
+    0) echo "  [ok]   .claude/settings.local.json (allow rules for autonomous-run.sh)" ;;
     1) echo "  [skip] .claude/settings.local.json already allows autonomous-run.sh" ;;
-    *) echo "  [warn] could not update .claude/settings.local.json; add this allow rule by hand:" >&2
-       echo "         $RULE" >&2 ;;
+    *) echo "  [warn] could not update .claude/settings.local.json; add these allow rules by hand:" >&2
+       echo "         $RULE_QUOTED" >&2
+       echo "         $RULE_UNQUOTED" >&2 ;;
   esac
 else
   echo "  [warn] CLAUDE_PLUGIN_ROOT unset — skipped the autonomous-run.sh allow rule." >&2

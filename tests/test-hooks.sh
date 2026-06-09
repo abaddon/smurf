@@ -186,6 +186,19 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# Outside a smurf project (no scaffolding) the hook must stay silent.
+EMPTYPROJ=$(mktemp -d)
+out=$(echo "$P" | base64 -d | CLAUDE_PROJECT_DIR="$EMPTYPROJ" "$CLAUDE_PLUGIN_ROOT/hooks/session-start-context.sh")
+rc=$?
+if [ -z "$out" ] && [ "$rc" = "0" ]; then
+  echo "  PASS  session-start-context silent in a non-smurf project"
+  PASS=$((PASS+1))
+else
+  echo "  FAIL  session-start-context not silent in a non-smurf project (rc=$rc, output=$out)"
+  FAIL=$((FAIL+1))
+fi
+rm -rf "$EMPTYPROJ"
+
 echo
 echo "=== on-stop-summary (smoke) ==="
 export CLAUDE_RUN_TS="20260509T000000Z-test"

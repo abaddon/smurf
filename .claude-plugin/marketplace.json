@@ -1,12 +1,17 @@
 {
   "name": "smurf",
   "owner": {
-    "name": "abaddon"
+    "name": "abaddon",
+    "url": "https://github.com/abaddon"
+  },
+  "metadata": {
+    "description": "Marketplace for the smurf self-agentic orchestrator plugin."
   },
   "plugins": [
     {
       "name": "smurf",
-      "source": "./plugin"
+      "source": "./plugin",
+      "description": "Self-agentic orchestrator: product-owner → architect → developer → QA → devops → marketing waves on Claude Code."
     }
   ]
 }

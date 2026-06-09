@@ -250,6 +250,18 @@ if [ -x "$PLUGIN_ROOT/scripts/append-wiki-log.py" ]; then
     --pr-url "-" \
     --head-sha "$(git rev-parse --short HEAD 2>/dev/null || echo -)" \
     >> "$RUN_DIR/wiki-log.out" 2>&1 || true
+  # Commit the fallback row so the next run doesn't start with a dirty
+  # tree. If the orchestrator already logged+committed this run, the
+  # idempotent append above was a no-op and porcelain is empty → skip.
+  # (Projects overriding wiki.log_path keep the old behaviour: the row
+  # stays uncommitted until the next orchestrator commit.)
+  if git rev-parse --git-dir >/dev/null 2>&1; then
+    if [ -n "$(git status --porcelain -- docs/wiki/log.md 2>/dev/null)" ]; then
+      git add docs/wiki/log.md >> "$RUN_DIR/wiki-log.out" 2>&1 || true
+      git commit -q -m "docs(wiki): log run $TS (autonomous fallback)" -- docs/wiki/log.md \
+        >> "$RUN_DIR/wiki-log.out" 2>&1 || true
+    fi
+  fi
 fi
 
 # ---- close-loop hook (Phase 7+) ----

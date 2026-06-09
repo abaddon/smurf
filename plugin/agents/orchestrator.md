@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Top-level coordinator. Decomposes a goal into a wave-based DAG and delegates to specialist subagents (product-owner, architect, developer, qa-engineer, devops, marketing). Invoke with "@orchestrator: <goal>" or via /kickoff-team.
+description: Top-level coordinator. Decomposes a goal into a wave-based DAG and delegates to specialist subagents (product-owner, architect, developer, qa-engineer, devops, marketing). Role adopted by the MAIN session via /smurf:kickoff-team or /smurf:kickoff-workflow — never run as a subagent, because subagents cannot spawn other subagents and every wave depends on the Agent dispatch surface.
 tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task, TeamCreate, TeamDelete, SendMessage, TaskCreate, TaskUpdate, TaskList, TaskGet
 model: opus
 color: purple

@@ -3,12 +3,13 @@
 Review date: 2026-06-09. Scope: everything under `plugin/`, plus the
 root-level install/marketplace files. Items ordered by severity.
 
-Status update (same day): all section-A items fixed and verified —
-hook suite 25/25, wiki suite 19/19, `doctor.sh` exits 0 (incl. a
-simulated no-PyYAML environment), and a stubbed-`claude` end-to-end run
-of `autonomous-run.sh` confirms the budget flag and result parsing.
-Sections B and C re-reviewed after the fixes; per-item notes added
-where the A work changed their scope.
+Status: ALL SECTIONS RESOLVED (2026-06-09, three passes: A, then B,
+then C, re-reviewing the remaining sections after each pass). Final
+verification: test-hooks 30/30, test-wiki 19/19, test-scripts 24/24
+(all three wired into tests/verify.sh), doctor.sh exit 0, hooks.json /
+marketplace.json valid JSON, every shell script passes bash -n.
+The only remaining decision is non-code and owner-only: choosing a
+license (C7 note). Per-item details below; resolution notes inline.
 
 ## A. Bugs (broken behaviour today) — ALL FIXED
 
@@ -173,9 +174,21 @@ renumbering.
   explicitly warns that long-running scripts must use background Bash,
   not `!` expansion. Inconsistent guidance for the same problem.
 
-## C. Improvements
+## C. Improvements — ALL RESOLVED
 
-- [ ] **C1. Make the session-start hook quiet outside smurf projects.**
+Resolved 2026-06-09 (third pass). C5 was confirmed as a real bug by
+the official docs (subagents cannot spawn subagents) — both kickoff
+commands now instruct the MAIN session to adopt the orchestrator
+role, and the duplicated wave-3 gate/probe prose (C3) was collapsed
+into pointers at orchestrator.md's canonical sections in the same
+rewrite. C9 added tests/test-scripts.sh (24 tests: doctor
+self-check, init-project scaffolding/idempotency/merge paths,
+stubbed-claude autonomous runs incl. watchdog and the C10 fallback
+commit) and wired all three suites into tests/verify.sh.
+Open decision left for the owner (not a code task): pick a license
+(no LICENSE file exists to mirror into plugin.json — see C7 note).
+
+- [x] **C1. Make the session-start hook quiet outside smurf projects.**
   The plugin's SessionStart hook fires in *every* project once installed,
   injecting "unknown — docs/rigor-level.md missing" noise. Exit silently
   (no output) when no smurf scaffolding is detected.
@@ -189,21 +202,21 @@ renumbering.
   server-level because their tool names depend on user-supplied
   configs and both are read-oriented.)
 
-- [ ] **C3. Deduplicate the wave-3 gate prose.** The Dynamic-Workflows gate
+- [x] **C3. Deduplicate the wave-3 gate prose.** The Dynamic-Workflows gate
   and the Agent-Teams capability probe are spelled out nearly verbatim in
   both `orchestrator.md` and the two kickoff commands — they have already
   drifted (A6). Keep the canonical text in one place and reference it.
 
-- [ ] **C4. Merge the two `matcher: "Bash"` PreToolUse entries in
+- [x] **C4. Merge the two `matcher: "Bash"` PreToolUse entries in
   `hooks/hooks.json`** into one entry with two hooks — same behaviour,
   less duplication.
 
-- [ ] **C5. CONFIRMED BUG (was: verify): the orchestrator cannot spawn
+- [x] **C5. CONFIRMED BUG (was: verify): the orchestrator cannot spawn
   subagents when invoked via `@orchestrator`.** Docs verified
   (code.claude.com/docs/en/sub-agents): "Subagents cannot spawn other
   subagents" — the Agent/Task tool is unavailable inside a subagent.
   Fix: kickoff commands must instruct the MAIN session to adopt the
-  orchestrator role (bootstrap.md already uses this pattern).** The
+  orchestrator role (bootstrap.md already uses this pattern). The
   kickoff commands invoke `@orchestrator: $ARGUMENTS`, i.e. the
   orchestrator runs *as a subagent*, and subagents normally cannot use
   `Task` to spawn further subagents. If that restriction applies on the
@@ -211,22 +224,22 @@ renumbering.
   inline execution; the commands may need to instruct the *main* session
   to assume the orchestrator role instead.
 
-- [ ] **C6. Fragile permission rule in `init-project.sh:68`.**
+- [x] **C6. Fragile permission rule in `init-project.sh:68`.**
   `RULE="Bash(bash \"$(dirname "$CLAUDE_PLUGIN_ROOT")/:*)"` only matches
   when the agent quotes the path exactly the same way (`bash "<path>/…"`).
   Add the unquoted variant too, or document the dependency.
 
-- [ ] **C7. Add metadata: `license` in `plugin.json`; description/owner
+- [x] **C7. Add metadata: `license` in `plugin.json`; description/owner
   metadata in `marketplace.json`.** (The non-semver version part of the
   original finding was fixed in A13.)
 
-- [ ] **C8. Decide where QA reports live.** Agents write `qa/<id>.md` at the
+- [x] **C8. Decide where QA reports live.** Agents write `qa/<id>.md` at the
   project root and bootstrap commits them; the directory is never
   scaffolded, gitignored, or documented in README's file inventory.
   `docs/qa/` (committed) or `.claude/runs/<ts>/qa/` (ephemeral) would be
   more deliberate.
 
-- [ ] **C9. Test coverage for the shell entry points.** `tests/` covers
+- [x] **C9. Test coverage for the shell entry points.** `tests/` covers
   hooks and the wiki scripts well, but `init-project.sh` (JSON merge
   paths), `autonomous-run.sh` (budget/watchdog/fallback log row), and
   `doctor.sh` itself (A1 would have been caught by a self-test) are
@@ -239,7 +252,7 @@ renumbering.
   (The A3 fix already added a stop-summary no-clobber test to
   `test-hooks.sh`.)
 
-- [ ] **C10. Wiki log row is left uncommitted on the fallback path.**
+- [x] **C10. Wiki log row is left uncommitted on the fallback path.**
   When `autonomous-run.sh` appends the fallback row to `docs/wiki/log.md`
   (orchestrator crashed/timed out), nothing commits it — the next run
   starts with a dirty tree. Commit it in the script or document why not.
