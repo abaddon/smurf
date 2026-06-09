@@ -41,7 +41,15 @@ if [ -f "$RUN_DIR/orchestrator.log" ]; then
   QA_ITERATIONS=$(grep -c -i 'qa.iteration' "$RUN_DIR/orchestrator.log" 2>/dev/null || echo 0)
 fi
 
-cat > "$RUN_DIR/summary.md" <<EOF
+# The orchestrator's OUTPUT CONTRACT writes its own (richer) summary.md
+# during the run. Never overwrite it — divert this hook's digest to
+# stop-summary.md in that case.
+OUT_FILE="$RUN_DIR/summary.md"
+if [ -f "$OUT_FILE" ]; then
+  OUT_FILE="$RUN_DIR/stop-summary.md"
+fi
+
+cat > "$OUT_FILE" <<EOF
 # Run summary — $TS
 
 - session_id: $SESSION_ID

@@ -10,10 +10,13 @@ You are the engineering orchestrator for the smurf project.
 
 ## PRE-FLIGHT (every invocation, in order)
 
-> Bash policy: this plugin's PreToolUse hook rejects compound commands
-> (no `&&`, `||`, `;`, `|`, `$(...)`, or backticks). Issue one Bash call
-> per command. For file reads, prefer the `Read` tool over `cat` so you
-> are not subject to the bash allowlist at all.
+> Bash policy: issue one Bash call per command — no `&&`, `||`, `;`,
+> `|`, `$(...)`, or backticks. This is a smurf convention, not a hook
+> restriction (the bash-guard hook is a denylist and lets compound
+> commands through): the pre-commit-verify hook only recognizes
+> commands that START with `git commit`, and headless `--allowedTools`
+> matching is only reliable on simple commands. For file reads, prefer
+> the `Read` tool over `cat`.
 
 1. Read the smurf operating manual via `Read("${CLAUDE_PLUGIN_ROOT}/smurf.md")`.
    Then read the policy: first try `Read("${CLAUDE_PROJECT_DIR}/.claude/policy.yaml")`;

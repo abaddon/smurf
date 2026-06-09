@@ -176,25 +176,28 @@ EOF
 }
 trap on_term TERM INT
 
-# ---- slash command selection ----
-if [ "$MODE" = "team" ]; then
-  PROMPT="/smurf:kickoff-team $GOAL"
-else
-  PROMPT="/smurf:kickoff-team $GOAL"
-fi
+# ---- slash command ----
+# /smurf:kickoff-team is the single kickoff: it attempts Agent Teams for
+# wave 3 and degrades to subagent mode on its own. MODE only selects the
+# budget tier above.
+PROMPT="/smurf:kickoff-team $GOAL"
 
 # ---- run ----
 # Note: --bare deliberately NOT used — it would suppress .mcp.json auto-load
 # and break mcp__github (research §1.5 + plan §8).
 # --max-turns is the real ceiling under subscription billing; --max-budget-usd
 # is best-effort.
-ALLOWED_TOOLS="Read,Write,Edit,Bash(./verify.sh),Bash(git *),Bash(gh *),Bash(curl https://openrouter.ai/api/v1/*),Bash(python3 *),Bash(jq *),Bash(yq *),TodoWrite,mcp__github"
+# Note: agents read smurf.md / policy.yaml via the Read tool (not `cat`),
+# so no Bash(cat *) entry is needed. Bash(claude --version) is for the
+# orchestrator's ultrareview/workflow CLI-version gates.
+ALLOWED_TOOLS="Read,Write,Edit,Bash(./verify.sh),Bash(git *),Bash(gh *),Bash(curl https://openrouter.ai/api/v1/*),Bash(python3 *),Bash(jq *),Bash(yq *),Bash(claude --version),TodoWrite,mcp__github"
 
 set +e
 run_with_watchdog "$WATCHDOG" \
   claude -p "$PROMPT" \
     --allowedTools "$ALLOWED_TOOLS" \
     --max-turns 200 \
+    --max-budget-usd "$BUDGET" \
     --output-format stream-json --verbose \
     > "$RUN_DIR/run.ndjson" 2> "$RUN_DIR/run.err"
 RC=$?
@@ -211,7 +214,8 @@ fi
 
 # ---- post-run notification ----
 if [ -n "${SLACK_WEBHOOK:-}" ]; then
-  LAST=$(jq -r '.messages[-1].content // empty' < "$RUN_DIR/run.ndjson" 2>/dev/null | tail -c 2000)
+  # stream-json is NDJSON; the final event is {"type":"result","result":"…"}.
+  LAST=$(jq -r 'select(.type == "result") | .result // empty' < "$RUN_DIR/run.ndjson" 2>/dev/null | tail -c 2000)
   if [ -n "$LAST" ]; then
     curl -sS -X POST -H "Content-Type: application/json" \
       --data "{\"text\": $(printf '%s' "$LAST" | jq -Rs .)}" \

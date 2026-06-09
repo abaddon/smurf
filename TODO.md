@@ -2,11 +2,17 @@
 
 Review date: 2026-06-09. Scope: everything under `plugin/`, plus the
 root-level install/marketplace files. Items ordered by severity.
-`tests/verify.sh` passes 24/24; `doctor.sh` currently FAILS (item 1).
 
-## A. Bugs (broken behaviour today)
+Status update (same day): all section-A items fixed and verified —
+hook suite 25/25, wiki suite 19/19, `doctor.sh` exits 0 (incl. a
+simulated no-PyYAML environment), and a stubbed-`claude` end-to-end run
+of `autonomous-run.sh` confirms the budget flag and result parsing.
+Sections B and C re-reviewed after the fixes; per-item notes added
+where the A work changed their scope.
 
-- [ ] **A1. `doctor.sh` fails on a fresh clone.** `plugin/scripts/doctor.sh:77`
+## A. Bugs (broken behaviour today) — ALL FIXED
+
+- [x] **A1. `doctor.sh` fails on a fresh clone.** `plugin/scripts/doctor.sh:77`
   still checks `commands/kickoff.md`, removed in `a0b92ff`
   ("remove /kickoff, make /kickoff-team the default"). Result:
   `failed=1`, exit 1 → README's "exits non-zero if the plugin install is
@@ -14,12 +20,12 @@ root-level install/marketplace files. Items ordered by severity.
   also missing `bootstrap.md`, which does exist. Fix the command list to
   `init kickoff-team kickoff-workflow nightly-run close-loop bootstrap`.
 
-- [ ] **A2. Stale references to the removed `/kickoff` command.**
+- [x] **A2. Stale references to the removed `/kickoff` command.**
   - `plugin/commands/init.md:26` — tells the user to run `/smurf:kickoff "<goal>"`.
   - `plugin/commands/kickoff-workflow.md:2` — "additive 3rd mode alongside
     /kickoff and /kickoff-team" (there are only two commands now).
 
-- [ ] **A3. Stop hook clobbers the orchestrator's summary.**
+- [x] **A3. Stop hook clobbers the orchestrator's summary.**
   `on-stop-summary.sh` writes `$RUN_DIR/summary.md` unconditionally
   (`cat > …`). In autonomous runs `CLAUDE_RUN_TS` pins both writers to the
   same directory, so the hook's generic template overwrites the richer
@@ -28,7 +34,7 @@ root-level install/marketplace files. Items ordered by severity.
   Write to a different file (e.g. `stop-summary.md`) or skip when
   `summary.md` already exists.
 
-- [ ] **A4. `autonomous-run.sh` budget is resolved but never enforced.**
+- [x] **A4. `autonomous-run.sh` budget is resolved but never enforced.**
   `BUDGET` is computed from policy (lines 59–67) and written to `meta.txt`,
   but the `claude -p` invocation passes no `--max-budget-usd` — the header
   comment ("--max-budget-usd is best-effort") implies it is passed.
@@ -36,7 +42,7 @@ root-level install/marketplace files. Items ordered by severity.
   Related: the `MODE=team` / `else` branches at lines 180–184 build the
   identical prompt — dead conditional left over from the `/kickoff` removal.
 
-- [ ] **A5. Headless allowlist doesn't cover what the agents are told to run.**
+- [x] **A5. Headless allowlist doesn't cover what the agents are told to run.**
   `autonomous-run.sh` sets `--allowedTools "…,Bash(./verify.sh),Bash(git *),
   Bash(gh *),Bash(curl …),Bash(python3 *),Bash(jq *),Bash(yq *),…"`, but:
   - all seven specialist agents instruct pre-flight via
@@ -50,7 +56,7 @@ root-level install/marketplace files. Items ordered by severity.
   Fix by switching agent pre-flights to the `Read` tool (orchestrator.md
   already recommends exactly this) and/or extending the allowlist.
 
-- [ ] **A6. Contradictory story on compound Bash commands (3-way).**
+- [x] **A6. Contradictory story on compound Bash commands (3-way).**
   - `orchestrator.md:13-16` and `kickoff-workflow.md:15-16` claim "this
     plugin's PreToolUse hook rejects compound commands (no `&&`, `||`, …)".
   - `pre-tool-bash-guard.sh:5-8` and `policy.yaml:4-9` explicitly state the
@@ -60,11 +66,11 @@ root-level install/marketplace files. Items ordered by severity.
     `git add <paths> && git commit -m '…'`.
   Pick one model and make all five files agree.
 
-- [ ] **A7. Wave numbering drift.** `marketing.md:3` says "Invoke as wave 5",
+- [x] **A7. Wave numbering drift.** `marketing.md:3` says "Invoke as wave 5",
   but in `orchestrator.md` wave 5 is Deploy (devops) and Promote
   (marketing + sales-feedback) is wave 6.
 
-- [ ] **A8. Story `## Status` section missing from the PO contract.**
+- [x] **A8. Story `## Status` section missing from the PO contract.**
   `gherkin-stories/SKILL.md`, `build-wiki-index.py` (parse_story) and
   `wiki_lint.py` (orphan check) all depend on a trailing `## Status` block,
   but `product-owner.md` CONTRACT's trailing-block template omits it
@@ -72,37 +78,37 @@ root-level install/marketplace files. Items ordered by severity.
   orphan-story lint can never fire. Also `product-owner.md:116` says to mark
   superseded stories "at the top", while the skill puts Status at the bottom.
 
-- [ ] **A9. ADR ports section name drift defeats the port-conflict lint.**
+- [x] **A9. ADR ports section name drift defeats the port-conflict lint.**
   `architect.md` template uses `## Ports / Adapters (or modules)`;
   `wiki_lint.py:96` only matches `Ports / Adapters`, `Ports`, or
   `Ports / Adapters / Modules` (the adr-template skill's spelling). ADRs
   written from the architect.md template are invisible to the
   port-conflict check. Align architect.md with the skill.
 
-- [ ] **A10. GNU-only commands break the hooks on macOS.** The repo works
+- [x] **A10. GNU-only commands break the hooks on macOS.** The repo works
   hard at macOS compat elsewhere (bash-3.2 workarounds in policy-guard.sh,
   `gtimeout` fallback in autonomous-run.sh), but:
   - `session-start-context.sh:33` uses `find -printf` (GNU-only);
   - `on-subagent-complete.sh:27` uses `tac` (GNU-only).
   Use portable equivalents (`ls -t` / `stat -f`, `tail -r` fallback or awk).
 
-- [ ] **A11. `doctor.sh` hard-requires PyYAML; the scripts deliberately don't.**
+- [x] **A11. `doctor.sh` hard-requires PyYAML; the scripts deliberately don't.**
   The "policy.yaml is valid YAML" check (doctor.sh:54) imports `yaml`,
   while build-wiki-index.py / append-wiki-log.py / wiki_lint.py all carry an
   ImportError fallback so PyYAML is optional. On a machine without PyYAML,
   doctor reports the plugin "broken" even though everything works.
 
-- [ ] **A12. Slack notification can never fire with real content.**
+- [x] **A12. Slack notification can never fire with real content.**
   `autonomous-run.sh:214` parses `.messages[-1].content` out of
   `run.ndjson`, but `--output-format stream-json` emits NDJSON events
   (`{"type":"assistant",…}`, terminal `{"type":"result","result":…}`) —
   there is no `.messages` array, so `LAST` is always empty and the webhook
   is silently skipped. Read the `result` event instead.
 
-- [ ] **A13. `plugin.json` version `1.0.0.19` is not semver** (4 segments).
+- [x] **A13. `plugin.json` version `1.0.0.19` is not semver** (4 segments).
   Marketplace tooling expects `MAJOR.MINOR.PATCH`.
 
-- [ ] **A14. OpenRouter cost field is wrong.** `openrouter-curl/SKILL.md:56`
+- [x] **A14. OpenRouter cost field is wrong.** `openrouter-curl/SKILL.md:56`
   and `marketing.md:49-50` read `usage.total_cost`; OpenRouter's chat
   completions return `usage.cost`, and only when the request includes
   `"usage": {"include": true}` — as written the cost is always `0`.
@@ -125,7 +131,8 @@ root-level install/marketplace files. Items ordered by severity.
   ("required for /smurf:kickoff-team" — it's optional now).
 
 - [ ] **B4. README Status section drift.** "13/13 hook smoke tests pass" —
-  the suite now reports 24 passing; phases jump 7 → 9 with no Phase 8.
+  the suite now reports 25 passing (was 24 at review time; the A3 fix
+  added a no-clobber test); phases jump 7 → 9 with no Phase 8.
 
 - [ ] **B5. `developer.md:13-15` names `/kickoff-team` for *both* modes**
   ("In Agent Teams mode (`/kickoff-team`) … in subagent mode
@@ -133,9 +140,12 @@ root-level install/marketplace files. Items ordered by severity.
 
 - [ ] **B6. Hard-coded caps contradict the house rule.** smurf.md says
   "Edit policy.yaml, never hard-code numbers in agent prompts or scripts",
-  yet `autonomous-run.sh:197` hard-codes `--max-turns 200` (policy says
+  yet `autonomous-run.sh` hard-codes `--max-turns 200` (policy says
   `max_turns_orchestrator: 60`) and `close-loop.py:138-139` hard-codes
-  `--max-turns 20` / `--max-budget-usd 1.50`.
+  `--max-turns 20` / `--max-budget-usd 1.50`. Note: the
+  autonomous-run budget is no longer hard-coded — A4 wired
+  `--max-budget-usd` to policy; the turn caps and close-loop values
+  remain.
 
 - [ ] **B7. `verify_command` policy key is read by no hook or script.**
   `pre-commit-verify.sh` hard-codes `./verify.sh`. Either wire the key up
@@ -186,7 +196,8 @@ root-level install/marketplace files. Items ordered by severity.
   Add the unquoted variant too, or document the dependency.
 
 - [ ] **C7. Add metadata: `license` in `plugin.json`; description/owner
-  metadata in `marketplace.json`.**
+  metadata in `marketplace.json`.** (The non-semver version part of the
+  original finding was fixed in A13.)
 
 - [ ] **C8. Decide where QA reports live.** Agents write `qa/<id>.md` at the
   project root and bootstrap commits them; the directory is never
@@ -198,7 +209,14 @@ root-level install/marketplace files. Items ordered by severity.
   hooks and the wiki scripts well, but `init-project.sh` (JSON merge
   paths), `autonomous-run.sh` (budget/watchdog/fallback log row), and
   `doctor.sh` itself (A1 would have been caught by a self-test) are
-  untested.
+  untested. Also discovered while fixing section A:
+  - `tests/verify.sh` only runs `test-hooks.sh` — `tests/test-wiki.sh`
+    (19 tests) is never invoked by the verify entrypoint; wire it in.
+  - The A4/A12 verification used an ad-hoc stubbed-`claude` run of
+    `autonomous-run.sh`; promoting that stub pattern into `tests/`
+    would cover the budget flag, result parsing, and fallback log row.
+  (The A3 fix already added a stop-summary no-clobber test to
+  `test-hooks.sh`.)
 
 - [ ] **C10. Wiki log row is left uncommitted on the fallback path.**
   When `autonomous-run.sh` appends the fallback row to `docs/wiki/log.md`

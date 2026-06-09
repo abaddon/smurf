@@ -1,5 +1,5 @@
 ---
-description: Run wave 3 as a host Dynamic Workflow when a goal has many independent parallel features; gated, additive 3rd mode alongside /kickoff and /kickoff-team.
+description: Run wave 3 as a host Dynamic Workflow when a goal has many independent parallel features; gated, additive mode alongside /kickoff-team.
 argument-hint: <goal with many independent parallel features>
 ---
 
@@ -11,8 +11,8 @@ smurf plugin manifest cannot implement, bundle, or enable it — it can only
 gate, wrap, and delegate to it.
 
 **Gate — run BEFORE delegating the wave-3 fan-out.** All checks are
-read-only, one bash command per call (the PreToolUse hook rejects compound
-commands):
+read-only, one bash command per call (smurf convention — see the Bash
+policy note in `orchestrator.md`):
 
 1. Read `${CLAUDE_PROJECT_DIR}/.claude/settings.json` AND
    `${CLAUDE_PROJECT_DIR}/.claude/settings.local.json` → FAIL the gate if

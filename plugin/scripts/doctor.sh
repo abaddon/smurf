@@ -51,7 +51,13 @@ check ".claude-plugin/plugin.json valid JSON" "jq . $PLUGIN_ROOT/.claude-plugin/
 check "hooks/hooks.json exists"               "test -f $PLUGIN_ROOT/hooks/hooks.json"
 check "hooks/hooks.json valid JSON"           "jq . $PLUGIN_ROOT/hooks/hooks.json > /dev/null"
 check "policy.yaml exists"                    "test -f $PLUGIN_ROOT/policy.yaml"
-check "policy.yaml is valid YAML"             "python3 -c \"import yaml; yaml.safe_load(open('$PLUGIN_ROOT/policy.yaml'))\""
+# PyYAML is optional: the wiki scripts fall back to a minimal parser when
+# it is absent, so its absence must not fail the plugin health check.
+if python3 -c "import yaml" 2>/dev/null; then
+  check "policy.yaml is valid YAML"           "python3 -c \"import yaml; yaml.safe_load(open('$PLUGIN_ROOT/policy.yaml'))\""
+else
+  warn "policy.yaml YAML check skipped (PyYAML not installed; scripts use a fallback parser)" "false"
+fi
 check "smurf.md exists"                       "test -f $PLUGIN_ROOT/smurf.md"
 
 echo
@@ -74,7 +80,7 @@ done
 
 echo
 echo "=== [plugin] Slash commands ==="
-for c in init kickoff kickoff-team kickoff-workflow nightly-run close-loop; do
+for c in init kickoff-team kickoff-workflow nightly-run close-loop bootstrap; do
   check "commands/$c.md exists" "test -f $PLUGIN_ROOT/commands/$c.md"
 done
 

@@ -161,6 +161,20 @@ else
   echo "  FAIL  on-stop-summary did not write summary.md"
   FAIL=$((FAIL+1))
 fi
+
+# When the orchestrator already wrote summary.md, the hook must not
+# clobber it — its digest goes to stop-summary.md instead.
+ORCH_SUMMARY="orchestrator-authored summary — must survive the Stop hook"
+echo "$ORCH_SUMMARY" > "$TESTPROJ/.claude/runs/$CLAUDE_RUN_TS/summary.md"
+echo "$P" | base64 -d | "$CLAUDE_PLUGIN_ROOT/hooks/on-stop-summary.sh"
+if grep -qF "$ORCH_SUMMARY" "$TESTPROJ/.claude/runs/$CLAUDE_RUN_TS/summary.md" \
+   && [ -f "$TESTPROJ/.claude/runs/$CLAUDE_RUN_TS/stop-summary.md" ]; then
+  echo "  PASS  on-stop-summary preserves existing summary.md (writes stop-summary.md)"
+  PASS=$((PASS+1))
+else
+  echo "  FAIL  on-stop-summary clobbered an existing summary.md"
+  FAIL=$((FAIL+1))
+fi
 unset CLAUDE_RUN_TS
 
 echo

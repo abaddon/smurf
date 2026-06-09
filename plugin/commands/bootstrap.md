@@ -53,8 +53,10 @@ project has no git remote configured), say so explicitly.
 All waves spawn smurf subagents via `Task`. Apply
 `max_parallel_subagents` from policy when fanning out. Each agent's
 default PRE-FLIGHT still runs — the BOOTSTRAP-MODE block in the prompt
-body replaces only its CONTRACT. After every wave, commit the new
-files with `git add <paths> && git commit -m 'docs(bootstrap): <wave>: <summary>'`.
+body replaces only its CONTRACT. After every wave, commit the new files
+with separate `git add <paths>` and
+`git commit -m 'docs(bootstrap): <wave>: <summary>'` calls (one Bash
+call per command — no compound commands).
 
 ### Wave A — Inventory (parallel, read-only)
 

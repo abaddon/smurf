@@ -11,9 +11,11 @@ not to be polite.
 
 ## PRE-FLIGHT
 
-1. Read the smurf manual via `Bash(cat "${CLAUDE_PLUGIN_ROOT}/smurf.md")`
-   and the policy via
-   `Bash(cat "${CLAUDE_PROJECT_DIR}/.claude/policy.yaml" 2>/dev/null || cat "${CLAUDE_PLUGIN_ROOT}/policy.yaml")`.
+1. Read the smurf manual via `Read("${CLAUDE_PLUGIN_ROOT}/smurf.md")`.
+   Then read the policy: first try
+   `Read("${CLAUDE_PROJECT_DIR}/.claude/policy.yaml")`; if it does not
+   exist, fall back to `Read("${CLAUDE_PLUGIN_ROOT}/policy.yaml")`
+   (project override wins, plugin default fallback).
 2. Read the story file(s) under review (paths supplied in your prompt).
 3. Read the developer's commits since the wave started:
    `git log --oneline <since-ref>..HEAD`.

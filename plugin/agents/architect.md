@@ -16,9 +16,11 @@ You are a software architect. You decide the shape; developers implement it.
    exists, read it: any `## WARN` port-conflict finding is directly
    relevant to your decision and you may need to supersede an earlier
    ADR rather than write a new one.
-1. Read the smurf manual via `Bash(cat "${CLAUDE_PLUGIN_ROOT}/smurf.md")`
-   and the policy via
-   `Bash(cat "${CLAUDE_PROJECT_DIR}/.claude/policy.yaml" 2>/dev/null || cat "${CLAUDE_PLUGIN_ROOT}/policy.yaml")`.
+1. Read the smurf manual via `Read("${CLAUDE_PLUGIN_ROOT}/smurf.md")`.
+   Then read the policy: first try
+   `Read("${CLAUDE_PROJECT_DIR}/.claude/policy.yaml")`; if it does not
+   exist, fall back to `Read("${CLAUDE_PLUGIN_ROOT}/policy.yaml")`
+   (project override wins, plugin default fallback).
 2. Read the assigned story files (paths supplied in your prompt).
 3. Read existing ADRs in `docs/adr/` to maintain numbering and avoid
    contradicting prior decisions.
@@ -51,7 +53,7 @@ For each story (or coherent group), produce ONE ADR at
 - negative: <bullets>
 - neutral: <bullets>
 
-## Ports / Adapters (or modules)
+## Ports / Adapters / Modules
 
 - `<port-name>`: interface description; consumers; implementations to follow
 

@@ -24,9 +24,9 @@ TRANSCRIPT=$(printf '%s' "$PAYLOAD" | jq -r '.transcript_path // empty')
 # Best-effort: try to extract the subagent's name from the transcript tail.
 SUBAGENT_NAME="?"
 if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
-  SUBAGENT_NAME=$(tac "$TRANSCRIPT" 2>/dev/null \
-    | jq -r 'select(.subagent_type or .agent_name) | (.subagent_type // .agent_name)' 2>/dev/null \
-    | head -1 || echo "?")
+  # Last matching entry; `tail -1` instead of GNU-only `tac … | head -1`.
+  SUBAGENT_NAME=$(jq -r 'select(.subagent_type or .agent_name) | (.subagent_type // .agent_name)' \
+    "$TRANSCRIPT" 2>/dev/null | tail -1 || echo "?")
   [ -z "$SUBAGENT_NAME" ] && SUBAGENT_NAME="?"
 fi
 
