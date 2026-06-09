@@ -43,17 +43,21 @@ RESPONSE=$(curl -sS https://openrouter.ai/api/v1/chat/completions \
     {"role": "user",   "content": "Write 3 release-note variants for the change described below.\n\n<feature summary>"}
   ],
   "temperature": 0.5,
-  "max_tokens": 600
+  "max_tokens": 600,
+  "usage": {"include": true}
 }
 JSON
 )
 ```
 
+`"usage": {"include": true}` makes OpenRouter return the request cost in
+`usage.cost` — without it the response carries token counts only.
+
 ## Parse + write
 
 ```bash
 echo "$RESPONSE" | jq -r '.choices[0].message.content' > docs/marketing/<date>-<slug>/release-notes.md
-COST=$(echo "$RESPONSE" | jq -r '.usage.total_cost // 0')
+COST=$(echo "$RESPONSE" | jq -r '.usage.cost // 0')
 echo "openrouter cost: \$$COST"
 ```
 

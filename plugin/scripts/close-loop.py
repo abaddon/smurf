@@ -39,6 +39,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 FEEDBACK_DIR = PROJECT_ROOT / "docs" / "feedback"
 
+# Deliberate script-level constants, not policy.yaml keys: close-loop is a
+# fixed-scope digest (one file out, read-only sources), not an orchestrator
+# run governed by the policy caps. smurf.md's "caps live in policy.yaml"
+# rule applies to agent/orchestrator runs.
+CLAUDE_MAX_TURNS = "20"
+CLAUDE_BUDGET_USD = "1.50"
+
 PROMPT_TEMPLATE = """Read-only analytics summary for the last {window}.
 
 Write a single markdown file at docs/feedback/{date}.md with this exact
@@ -88,15 +95,20 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def run_wiki_lint() -> int:
+def run_wiki_lint(dry_run: bool = False) -> int:
     """Invoke wiki_lint.py in-process. Returns its exit code (0 or 2)."""
     here = Path(__file__).resolve().parent
     lint_script = here / "wiki_lint.py"
     if not lint_script.is_file():
         return 0  # no lint script means feature not deployed; not an error
+    cmd = [sys.executable, str(lint_script)]
+    if dry_run:
+        # Propagate dry-run: lint findings print to stdout, health.md is
+        # NOT written (a dry run must not touch the project tree).
+        cmd.append("--dry-run")
     try:
         return subprocess.run(
-            [sys.executable, str(lint_script)],
+            cmd,
             cwd=PROJECT_ROOT,
             env=os.environ.copy(),
         ).returncode
@@ -113,13 +125,11 @@ def main() -> int:
     # Wiki lint runs first (cheap, deterministic, no network). Its FAIL
     # exit propagates to our own exit at the end. We do NOT abort the
     # LLM digest on lint findings — both artifacts are useful.
-    lint_rc = run_wiki_lint()
+    lint_rc = run_wiki_lint(dry_run=args.dry_run)
 
     if out_path.exists() and not args.force:
         print(f"[close-loop] {out_path} already exists; skipping LLM digest (use --force to overwrite)")
         return 2 if lint_rc == 2 else 0
-
-    FEEDBACK_DIR.mkdir(parents=True, exist_ok=True)
 
     prompt = PROMPT_TEMPLATE.format(window=args.window, date=today)
 
@@ -127,15 +137,24 @@ def main() -> int:
         print(prompt)
         return 2 if lint_rc == 2 else 0
 
+    FEEDBACK_DIR.mkdir(parents=True, exist_ok=True)
+
     if shutil.which("claude") is None:
         print("[close-loop] ERROR: 'claude' not on PATH", file=sys.stderr)
         return 1
 
     cmd = [
         "claude", "-p", prompt,
-        "--allowedTools", "Read,Write,mcp__github,mcp__sentry,mcp__linear",
-        "--max-turns", "20",
-        "--max-budget-usd", "1.50",
+        # Read-only MCP surface: name the specific github read tools instead
+        # of the whole server (which includes write tools the contract bans).
+        # sentry/linear stay server-level: their tool names depend on the
+        # user-supplied server config, and both are read-oriented sources.
+        "--allowedTools",
+        "Read,Write,"
+        "mcp__github__list_issues,mcp__github__get_issue,mcp__github__search_issues,"
+        "mcp__sentry,mcp__linear",
+        "--max-turns", CLAUDE_MAX_TURNS,
+        "--max-budget-usd", CLAUDE_BUDGET_USD,
         "--output-format", "stream-json",
         "--verbose",  # required by `claude -p` whenever output-format is stream-json
     ]

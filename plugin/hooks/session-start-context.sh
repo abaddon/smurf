@@ -18,6 +18,14 @@ PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 # Drain stdin (we don't need its fields, but Claude Code expects us to read it)
 cat > /dev/null
 
+# Plugin hooks fire in every project once the plugin is installed. Stay
+# silent when this project has no smurf scaffolding (no /smurf:init yet)
+# instead of injecting "missing" noise into unrelated sessions.
+if [ ! -f "$PROJECT_ROOT/docs/rigor-level.md" ] \
+   && [ ! -f "$PROJECT_ROOT/.claude/runs/next-goal.md" ]; then
+  exit 0
+fi
+
 cat <<EOF
 [session-start-context]
 
@@ -28,10 +36,9 @@ $(cat "$PROJECT_ROOT/docs/rigor-level.md" 2>/dev/null || echo "unknown — docs/
 EOF
 
 if [ -d "$PROJECT_ROOT/docs/feedback" ]; then
-  # List the 3 most recent feedback files; print their headlines (## sections)
-  find "$PROJECT_ROOT/docs/feedback" -maxdepth 1 -type f -name '*.md' \
-    -printf '%T@ %p\n' 2>/dev/null \
-    | sort -nr | head -3 | awk '{print $2}' \
+  # List the 3 most recent feedback files; print their headlines (## sections).
+  # `ls -t` (mtime sort) is portable — GNU find's -printf is not (macOS).
+  ls -t "$PROJECT_ROOT/docs/feedback"/*.md 2>/dev/null | head -3 \
     | while read -r f; do
         echo ""
         echo "### $(basename "$f")"

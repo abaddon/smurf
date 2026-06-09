@@ -13,19 +13,7 @@ set +e
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 export CLAUDE_PLUGIN_ROOT="$REPO/plugin"
 
-PASS=0
-FAIL=0
-
-assert() {
-  local desc="$1"; shift
-  if "$@"; then
-    echo "  PASS  $desc"
-    PASS=$((PASS+1))
-  else
-    echo "  FAIL  $desc"
-    FAIL=$((FAIL+1))
-  fi
-}
+. "$(dirname "$0")/common.sh"
 
 # Build the fixture tree in a tempdir.
 seed_fixture() {
@@ -154,16 +142,16 @@ echo "=== build-wiki-index.py ==="
 P1="$TMP/proj1"
 seed_fixture "$P1"
 CLAUDE_PROJECT_DIR="$P1" python3 "$CLAUDE_PLUGIN_ROOT/scripts/build-wiki-index.py" > /dev/null 2>&1
-assert "first invocation creates index.md" test -f "$P1/docs/wiki/index.md"
+assert_cmd "first invocation creates index.md" test -f "$P1/docs/wiki/index.md"
 
 SHA1=$(sha1sum "$P1/docs/wiki/index.md" | awk '{print $1}')
 CLAUDE_PROJECT_DIR="$P1" python3 "$CLAUDE_PLUGIN_ROOT/scripts/build-wiki-index.py" > /dev/null 2>&1
 SHA2=$(sha1sum "$P1/docs/wiki/index.md" | awk '{print $1}')
-assert "byte-deterministic across runs" test "$SHA1" = "$SHA2"
+assert_cmd "byte-deterministic across runs" test "$SHA1" = "$SHA2"
 
-assert "index lists all 4 ADRs" \
+assert_cmd "index lists all 4 ADRs" \
   test "$(grep -c '^| \[0' "$P1/docs/wiki/index.md")" -eq 4
-assert "index cross-links cache topic to ADRs and stories" \
+assert_cmd "index cross-links cache topic to ADRs and stories" \
   bash -c "grep -A4 '^### cache$' '$P1/docs/wiki/index.md' | grep -q 'ADRs:'"
 
 # Opt-out: wiki.enabled=false should produce no file.
@@ -172,7 +160,7 @@ mkdir -p "$P2/.claude"
 seed_fixture "$P2"
 printf 'wiki:\n  enabled: false\n' > "$P2/.claude/policy.yaml"
 CLAUDE_PROJECT_DIR="$P2" python3 "$CLAUDE_PLUGIN_ROOT/scripts/build-wiki-index.py" > /dev/null 2>&1
-assert "wiki.enabled=false: no index.md written" bash -c "! test -e '$P2/docs/wiki/index.md'"
+assert_cmd "wiki.enabled=false: no index.md written" bash -c "! test -e '$P2/docs/wiki/index.md'"
 
 # ---------------- append-wiki-log.py ----------------
 echo
@@ -180,22 +168,22 @@ echo "=== append-wiki-log.py ==="
 
 CLAUDE_PROJECT_DIR="$P1" python3 "$CLAUDE_PLUGIN_ROOT/scripts/append-wiki-log.py" \
   --ts "20260517T120000Z" --goal "test goal one" --status green > /dev/null 2>&1
-assert "first append creates log.md with one row" \
+assert_cmd "first append creates log.md with one row" \
   bash -c "test \$(grep -c '^| 20260517T' '$P1/docs/wiki/log.md') -eq 1"
 
 CLAUDE_PROJECT_DIR="$P1" python3 "$CLAUDE_PLUGIN_ROOT/scripts/append-wiki-log.py" \
   --ts "20260517T120000Z" --goal "duplicate goal" --status red > /dev/null 2>&1
-assert "duplicate --ts is idempotent (still one row)" \
+assert_cmd "duplicate --ts is idempotent (still one row)" \
   bash -c "test \$(grep -c '^| 20260517T' '$P1/docs/wiki/log.md') -eq 1"
 
 CLAUDE_PROJECT_DIR="$P1" python3 "$CLAUDE_PLUGIN_ROOT/scripts/append-wiki-log.py" \
   --ts "20260518T010000Z" --goal "second run" --status escalated > /dev/null 2>&1
-assert "distinct --ts appends a second row" \
+assert_cmd "distinct --ts appends a second row" \
   bash -c "test \$(grep -c '^| 2026' '$P1/docs/wiki/log.md') -eq 2"
 
 CLAUDE_PROJECT_DIR="$P2" python3 "$CLAUDE_PLUGIN_ROOT/scripts/append-wiki-log.py" \
   --ts "20260517T120000Z" --goal "should skip" --status green > /dev/null 2>&1
-assert "wiki.enabled=false: no log.md written" bash -c "! test -e '$P2/docs/wiki/log.md'"
+assert_cmd "wiki.enabled=false: no log.md written" bash -c "! test -e '$P2/docs/wiki/log.md'"
 
 # ---------------- wiki_lint.py ----------------
 echo
@@ -204,7 +192,7 @@ echo "=== wiki_lint.py ==="
 LINT_FILE="$TMP/lint-output.txt"
 CLAUDE_PROJECT_DIR="$P1" python3 "$CLAUDE_PLUGIN_ROOT/scripts/wiki_lint.py" --dry-run > "$LINT_FILE" 2>/dev/null
 LINT_RC=$?
-assert "lint exits 2 when a FAIL is present" test "$LINT_RC" -eq 2
+assert_cmd "lint exits 2 when a FAIL is present" test "$LINT_RC" -eq 2
 
 count_section() {
   local file="$1" section="$2"
@@ -216,29 +204,27 @@ count_section() {
   ' "$file"
 }
 
-assert "exactly 1 FAIL finding" test "$(count_section "$LINT_FILE" FAIL)" -eq 1
-assert "exactly 2 WARN findings" test "$(count_section "$LINT_FILE" WARN)" -eq 2
-assert "exactly 1 INFO finding" test "$(count_section "$LINT_FILE" INFO)" -eq 1
+assert_cmd "exactly 1 FAIL finding" test "$(count_section "$LINT_FILE" FAIL)" -eq 1
+assert_cmd "exactly 2 WARN findings" test "$(count_section "$LINT_FILE" WARN)" -eq 2
+assert_cmd "exactly 1 INFO finding" test "$(count_section "$LINT_FILE" INFO)" -eq 1
 
-assert "FAIL targets the accepted-ADR broken cite (0003)" \
+assert_cmd "FAIL targets the accepted-ADR broken cite (0003)" \
   grep -q '0003-gone' "$LINT_FILE"
-assert "port-conflict WARN names CacheStore" \
+assert_cmd "port-conflict WARN names CacheStore" \
   grep -q 'port `CacheStore`' "$LINT_FILE"
-assert "orphan INFO targets the old story (not bootstrap-)" \
+assert_cmd "orphan INFO targets the old story (not bootstrap-)" \
   grep -q '2026-01-01-old/01-orphan' "$LINT_FILE"
-assert "bootstrap-sprint story is exempt from orphan check" \
+assert_cmd "bootstrap-sprint story is exempt from orphan check" \
   bash -c "! grep -q 'bootstrap-2026-01-01' '$LINT_FILE'"
 
 # Lint with no FAIL: fix the accepted-ADR cite, verify exit 0.
 touch "$P1/src/gone.ts"
 CLAUDE_PROJECT_DIR="$P1" python3 "$CLAUDE_PLUGIN_ROOT/scripts/wiki_lint.py" --dry-run > /dev/null 2>&1
-assert "lint exits 0 after FAIL is fixed" test "$?" -eq 0
+assert_cmd "lint exits 0 after FAIL is fixed" test "$?" -eq 0
 
 # Opt-out: wiki.enabled=false should produce no health.md.
 CLAUDE_PROJECT_DIR="$P2" python3 "$CLAUDE_PLUGIN_ROOT/scripts/wiki_lint.py" > /dev/null 2>&1
-assert "wiki.enabled=false: no health.md written" bash -c "! test -e '$P2/docs/wiki/health.md'"
+assert_cmd "wiki.enabled=false: no health.md written" bash -c "! test -e '$P2/docs/wiki/health.md'"
 
 echo
-echo "=== Result ==="
-echo "passed=$PASS  failed=$FAIL"
-[ "$FAIL" -eq 0 ]
+test_summary

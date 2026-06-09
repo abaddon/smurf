@@ -8,8 +8,7 @@ re-dispatch) and on its own backlog (cross-run feedback file consumed
 at next kickoff).
 
 Architecture and design background: see the smurf development repo's
-`docs/research.md` (recommended Architecture A) and
-`docs/specs/00-overview.md`.
+`docs/specs/00-overview.md` (spec index).
 
 ## RIGOR_LEVEL
 

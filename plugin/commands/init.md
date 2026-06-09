@@ -23,5 +23,4 @@ After this completes:
    `"env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" }` to
    `.claude/settings.local.json`.
 4. Write your first goal to `.claude/runs/next-goal.md` and run
-   `/smurf:kickoff "<goal>"` (or `/smurf:kickoff-team` for parallel
-   features).
+   `/smurf:kickoff-team "<goal>"`.

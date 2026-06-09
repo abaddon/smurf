@@ -33,39 +33,9 @@ from typing import Iterable
 PROJECT_ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", Path(__file__).resolve().parent.parent))
 
-
-def load_policy() -> dict:
-    candidates = [PROJECT_ROOT / ".claude" / "policy.yaml", PLUGIN_ROOT / "policy.yaml"]
-    for p in candidates:
-        if p.is_file():
-            try:
-                import yaml  # type: ignore
-                return yaml.safe_load(p.read_text()) or {}
-            except ImportError:
-                return _minimal_yaml(p.read_text())
-    return {}
+from _policy import load_policy  # shared policy parser (same dir)
 
 
-def _minimal_yaml(text: str) -> dict:
-    wiki: dict = {}
-    in_wiki = False
-    for raw in text.splitlines():
-        if raw.startswith("wiki:"):
-            in_wiki = True
-            continue
-        if in_wiki:
-            if raw and not raw.startswith(("  ", "\t")):
-                break
-            if ":" in raw:
-                k, _, v = raw.strip().partition(":")
-                v = v.strip().strip('"').strip("'")
-                if v.lower() in ("true", "false"):
-                    wiki[k] = v.lower() == "true"
-                elif v.isdigit():
-                    wiki[k] = int(v)
-                elif v:
-                    wiki[k] = v
-    return {"wiki": wiki}
 
 
 # ---------------- parsing helpers ----------------
@@ -298,7 +268,7 @@ def collect(project_root: Path) -> tuple[list[dict], list[dict], list[dict]]:
 
 
 def main() -> int:
-    policy = load_policy()
+    policy = load_policy(PROJECT_ROOT, PLUGIN_ROOT)
     wiki = policy.get("wiki") or {}
     if isinstance(wiki, dict) and wiki.get("enabled") is False:
         print("[build-wiki-index] wiki.enabled=false; skipping")

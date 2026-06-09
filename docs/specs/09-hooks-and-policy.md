@@ -9,11 +9,14 @@ the only enforcement mechanism in this repo that is guaranteed to fire.
 - `.claude/hooks/session-start-context.sh` — SessionStart
 - `.claude/hooks/pre-tool-bash-guard.sh` — PreToolUse(Bash)
 - `.claude/hooks/policy-guard.sh` — PreToolUse(Write|Edit)
-- `.claude/hooks/pre-commit-verify.sh` — PreToolUse(Bash matching `git commit`)
+- `.claude/hooks/pre-commit-verify.sh` — PreToolUse(Bash; matchers select on
+  tool name only, so the script itself filters for git-commit invocations,
+  including compound forms like `cd x && git commit`)
 - `.claude/hooks/on-stop-summary.sh` — Stop
 - `.claude/hooks/on-subagent-complete.sh` — SubagentStop
 - `.claude/policy.yaml` — config consumed by the above
-- `.claude/settings.json` — registers each script under its event/matcher
+- `hooks/hooks.json` (inside the plugin) — registers each script under its
+  event/matcher; resolved via `${CLAUDE_PLUGIN_ROOT}`
 - `scripts/test-hooks.sh` — smoke test (base64-encoded payloads so the
   test script's own bash invocation doesn't trip the guard)
 
@@ -50,7 +53,7 @@ We don't use this richer form yet — exit-code semantics suffice.
 ```yaml
 forbidden_paths: [<glob-pattern>, ...]  # path match; ** matches across slashes
 forbidden_patterns: [<regex>, ...]      # extended regex; matched against new content
-verify_command: "./verify.sh"           # informational; hook always invokes ./verify.sh
+verify_command: "./verify.sh"           # executed by pre-commit-verify.sh before each git commit
 max_qa_iterations: <int>                # consumed by orchestrator
 max_parallel_subagents: <int>           # consumed by orchestrator
 max_turns_orchestrator: <int>
@@ -103,11 +106,12 @@ a regex denylist cannot stop. There is no bash *allowlist*.
       "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-context.sh" }] }],
   "PreToolUse": [
     { "matcher": "Bash",
-      "hooks": [{ "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-tool-bash-guard.sh" }] },
+      "hooks": [
+        { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-tool-bash-guard.sh" },
+        { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-commit-verify.sh" }
+      ] },
     { "matcher": "Write|Edit",
-      "hooks": [{ "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/policy-guard.sh" }] },
-    { "matcher": "Bash",
-      "hooks": [{ "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-commit-verify.sh" }] }
+      "hooks": [{ "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/policy-guard.sh" }] }
   ],
   "Stop":         [{ "hooks": [{ "type": "command",
       "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/on-stop-summary.sh" }] }],

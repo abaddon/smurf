@@ -27,19 +27,7 @@ exit 0
 EOF
 chmod +x "$TESTPROJ/verify.sh"
 
-PASS=0
-FAIL=0
-
-assert_exit() {
-  local name="$1" expected="$2" actual="$3"
-  if [ "$expected" = "$actual" ]; then
-    echo "  PASS  $name (exit=$actual)"
-    PASS=$((PASS+1))
-  else
-    echo "  FAIL  $name (expected exit $expected, got $actual)"
-    FAIL=$((FAIL+1))
-  fi
-}
+. "$(dirname "$0")/common.sh"
 
 run_hook() {
   local hook="$1" payload_b64="$2"
@@ -136,6 +124,43 @@ chmod +x "$TESTPROJ/verify.sh"
 P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status"}}' | base64 -w0)
 assert_exit "skip pre-commit-verify on non-commit command" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
 
+# Compound commands cannot bypass the git-commit filter.
+cat > "$TESTPROJ/verify.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+chmod +x "$TESTPROJ/verify.sh"
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"cd /tmp && git commit -m x"}}' | base64 -w0)
+assert_exit "block compound 'cd … && git commit' when verify fails" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
+
+# 'git commit' as a plain word inside arguments must not trigger verify.
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"echo \"git commit\""}}' | base64 -w0)
+assert_exit "skip when 'git commit' is only a word in args" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
+
+# verify_command override: the hook must run the project policy's command.
+cat > "$TESTPROJ/verify.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$TESTPROJ/verify.sh"
+mkdir -p "$TESTPROJ/.claude"
+printf 'verify_command: "./custom-verify.sh"\n' > "$TESTPROJ/.claude/policy.yaml"
+cat > "$TESTPROJ/custom-verify.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+chmod +x "$TESTPROJ/custom-verify.sh"
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git commit -m test"}}' | base64 -w0)
+assert_exit "block commit when policy verify_command fails (default verify.sh passes)" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
+
+cat > "$TESTPROJ/custom-verify.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$TESTPROJ/custom-verify.sh"
+assert_exit "allow commit when policy verify_command passes" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
+rm -f "$TESTPROJ/.claude/policy.yaml" "$TESTPROJ/custom-verify.sh"
+
 echo
 echo "=== session-start-context ==="
 P=$(printf '%s' '{"hook_event_name":"SessionStart","source":"startup"}' | base64 -w0)
@@ -149,6 +174,19 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# Outside a smurf project (no scaffolding) the hook must stay silent.
+EMPTYPROJ=$(mktemp -d)
+out=$(echo "$P" | base64 -d | CLAUDE_PROJECT_DIR="$EMPTYPROJ" "$CLAUDE_PLUGIN_ROOT/hooks/session-start-context.sh")
+rc=$?
+if [ -z "$out" ] && [ "$rc" = "0" ]; then
+  echo "  PASS  session-start-context silent in a non-smurf project"
+  PASS=$((PASS+1))
+else
+  echo "  FAIL  session-start-context not silent in a non-smurf project (rc=$rc, output=$out)"
+  FAIL=$((FAIL+1))
+fi
+rm -rf "$EMPTYPROJ"
+
 echo
 echo "=== on-stop-summary (smoke) ==="
 export CLAUDE_RUN_TS="20260509T000000Z-test"
@@ -159,6 +197,20 @@ if [ -f "$TESTPROJ/.claude/runs/$CLAUDE_RUN_TS/summary.md" ]; then
   PASS=$((PASS+1))
 else
   echo "  FAIL  on-stop-summary did not write summary.md"
+  FAIL=$((FAIL+1))
+fi
+
+# When the orchestrator already wrote summary.md, the hook must not
+# clobber it — its digest goes to stop-summary.md instead.
+ORCH_SUMMARY="orchestrator-authored summary — must survive the Stop hook"
+echo "$ORCH_SUMMARY" > "$TESTPROJ/.claude/runs/$CLAUDE_RUN_TS/summary.md"
+echo "$P" | base64 -d | "$CLAUDE_PLUGIN_ROOT/hooks/on-stop-summary.sh"
+if grep -qF "$ORCH_SUMMARY" "$TESTPROJ/.claude/runs/$CLAUDE_RUN_TS/summary.md" \
+   && [ -f "$TESTPROJ/.claude/runs/$CLAUDE_RUN_TS/stop-summary.md" ]; then
+  echo "  PASS  on-stop-summary preserves existing summary.md (writes stop-summary.md)"
+  PASS=$((PASS+1))
+else
+  echo "  FAIL  on-stop-summary clobbered an existing summary.md"
   FAIL=$((FAIL+1))
 fi
 unset CLAUDE_RUN_TS
@@ -177,8 +229,4 @@ else
 fi
 unset CLAUDE_RUN_TS
 
-echo
-echo "=== Result ==="
-echo "passed=$PASS  failed=$FAIL"
-[ "$FAIL" = "0" ] || exit 1
-exit 0
+test_summary

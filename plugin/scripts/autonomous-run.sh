@@ -30,10 +30,10 @@ if [ ! -f ".claude/runs/next-goal.md" ]; then
   exit 1
 fi
 
-# Policy: project override wins, plugin default fallback.
-POLICY=".claude/policy.yaml"
-[ -f "$POLICY" ] || POLICY="$PLUGIN_ROOT/policy.yaml"
-if [ ! -f "$POLICY" ]; then
+# Policy: project override wins, plugin default fallback (lib/policy.sh
+# is the single bash-side parser).
+. "$PLUGIN_ROOT/lib/policy.sh"
+if ! POLICY=$(policy_file "$PROJECT_ROOT" "$PLUGIN_ROOT"); then
   echo "ERROR: policy.yaml not found in $PROJECT_ROOT/.claude/ or $PLUGIN_ROOT/." >&2
   exit 1
 fi
@@ -55,16 +55,18 @@ case "$MODE" in
   *) echo "ERROR: MODE must be 'subagent' or 'team', got '$MODE'." >&2; exit 1 ;;
 esac
 
-# ---- budget resolution ----
+# ---- budget + turn-cap resolution ----
 if [ -n "${BUDGET_OVERRIDE:-}" ]; then
   BUDGET="$BUDGET_OVERRIDE"
-elif command -v yq >/dev/null 2>&1; then
-  BUDGET=$(yq -r ".budget_usd_${MODE}" "$POLICY")
 else
-  # Fallback: grep the line
-  BUDGET=$(awk -v key="budget_usd_${MODE}:" '$1==key {print $2}' "$POLICY")
+  BUDGET=$(policy_scalar "budget_usd_${MODE}" "$POLICY")
 fi
 [ -z "$BUDGET" ] && BUDGET="12"
+
+# max_turns_orchestrator caps the headless main session (which runs the
+# orchestrator role). Policy is the single source of truth for caps.
+MAX_TURNS=$(policy_scalar max_turns_orchestrator "$POLICY")
+case "$MAX_TURNS" in (*[!0-9]*|"") MAX_TURNS="200" ;; esac
 
 # ---- watchdog ----
 WATCHDOG="${WATCHDOG_OVERRIDE:-4h}"
@@ -176,25 +178,28 @@ EOF
 }
 trap on_term TERM INT
 
-# ---- slash command selection ----
-if [ "$MODE" = "team" ]; then
-  PROMPT="/smurf:kickoff-team $GOAL"
-else
-  PROMPT="/smurf:kickoff-team $GOAL"
-fi
+# ---- slash command ----
+# /smurf:kickoff-team is the single kickoff: it attempts Agent Teams for
+# wave 3 and degrades to subagent mode on its own. MODE only selects the
+# budget tier above.
+PROMPT="/smurf:kickoff-team $GOAL"
 
 # ---- run ----
 # Note: --bare deliberately NOT used — it would suppress .mcp.json auto-load
-# and break mcp__github (research §1.5 + plan §8).
+# and break mcp__github.
 # --max-turns is the real ceiling under subscription billing; --max-budget-usd
 # is best-effort.
-ALLOWED_TOOLS="Read,Write,Edit,Bash(./verify.sh),Bash(git *),Bash(gh *),Bash(curl https://openrouter.ai/api/v1/*),Bash(python3 *),Bash(jq *),Bash(yq *),TodoWrite,mcp__github"
+# Note: agents read smurf.md / policy.yaml via the Read tool (not `cat`),
+# so no Bash(cat *) entry is needed. Bash(claude --version) is for the
+# orchestrator's ultrareview/workflow CLI-version gates.
+ALLOWED_TOOLS="Read,Write,Edit,Bash(./verify.sh),Bash(git *),Bash(gh *),Bash(curl https://openrouter.ai/api/v1/*),Bash(python3 *),Bash(jq *),Bash(yq *),Bash(claude --version),TodoWrite,mcp__github"
 
 set +e
 run_with_watchdog "$WATCHDOG" \
   claude -p "$PROMPT" \
     --allowedTools "$ALLOWED_TOOLS" \
-    --max-turns 200 \
+    --max-turns "$MAX_TURNS" \
+    --max-budget-usd "$BUDGET" \
     --output-format stream-json --verbose \
     > "$RUN_DIR/run.ndjson" 2> "$RUN_DIR/run.err"
 RC=$?
@@ -211,7 +216,8 @@ fi
 
 # ---- post-run notification ----
 if [ -n "${SLACK_WEBHOOK:-}" ]; then
-  LAST=$(jq -r '.messages[-1].content // empty' < "$RUN_DIR/run.ndjson" 2>/dev/null | tail -c 2000)
+  # stream-json is NDJSON; the final event is {"type":"result","result":"…"}.
+  LAST=$(jq -r 'select(.type == "result") | .result // empty' < "$RUN_DIR/run.ndjson" 2>/dev/null | tail -c 2000)
   if [ -n "$LAST" ]; then
     curl -sS -X POST -H "Content-Type: application/json" \
       --data "{\"text\": $(printf '%s' "$LAST" | jq -Rs .)}" \
@@ -237,6 +243,20 @@ if [ -x "$PLUGIN_ROOT/scripts/append-wiki-log.py" ]; then
     --pr-url "-" \
     --head-sha "$(git rev-parse --short HEAD 2>/dev/null || echo -)" \
     >> "$RUN_DIR/wiki-log.out" 2>&1 || true
+  # Commit the fallback row so the next run doesn't start with a dirty
+  # tree. If the orchestrator already logged+committed this run, the
+  # idempotent append above was a no-op and porcelain is empty → skip.
+  # The log path honours a project's wiki.log_path override, same as
+  # append-wiki-log.py.
+  WIKI_LOG_REL=$(policy_scalar wiki.log_path "$POLICY")
+  [ -z "$WIKI_LOG_REL" ] && WIKI_LOG_REL="docs/wiki/log.md"
+  if git rev-parse --git-dir >/dev/null 2>&1; then
+    if [ -n "$(git status --porcelain -- "$WIKI_LOG_REL" 2>/dev/null)" ]; then
+      git add "$WIKI_LOG_REL" >> "$RUN_DIR/wiki-log.out" 2>&1 || true
+      git commit -q -m "docs(wiki): log run $TS (autonomous fallback)" -- "$WIKI_LOG_REL" \
+        >> "$RUN_DIR/wiki-log.out" 2>&1 || true
+    fi
+  fi
 fi
 
 # ---- close-loop hook (Phase 7+) ----

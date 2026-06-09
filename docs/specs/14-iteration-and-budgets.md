@@ -121,7 +121,7 @@ All knobs live in `.claude/policy.yaml`:
 |---|---|---|
 | `max_qa_iterations` | 2 | Layer 2 cap |
 | `max_parallel_subagents` | 4 | Wave-3 fan-out cap (subagent mode) |
-| `max_turns_orchestrator` | 60 | per-orchestrator-invocation tool calls |
+| `max_turns_orchestrator` | 200 | enforced: autonomous-run.sh passes it as the headless session's `--max-turns` |
 | `max_turns_subagent` | 30 | per-subagent tool calls |
 | `budget_usd_subagent` | 12 | Layer-2-mode cost ceiling |
 | `budget_usd_team` | 25 | Layer-1-mode cost ceiling |

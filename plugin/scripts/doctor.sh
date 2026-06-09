@@ -51,8 +51,15 @@ check ".claude-plugin/plugin.json valid JSON" "jq . $PLUGIN_ROOT/.claude-plugin/
 check "hooks/hooks.json exists"               "test -f $PLUGIN_ROOT/hooks/hooks.json"
 check "hooks/hooks.json valid JSON"           "jq . $PLUGIN_ROOT/hooks/hooks.json > /dev/null"
 check "policy.yaml exists"                    "test -f $PLUGIN_ROOT/policy.yaml"
-check "policy.yaml is valid YAML"             "python3 -c \"import yaml; yaml.safe_load(open('$PLUGIN_ROOT/policy.yaml'))\""
+# PyYAML is optional: the wiki scripts fall back to a minimal parser when
+# it is absent, so its absence must not fail the plugin health check.
+if python3 -c "import yaml" 2>/dev/null; then
+  check "policy.yaml is valid YAML"           "python3 -c \"import yaml; yaml.safe_load(open('$PLUGIN_ROOT/policy.yaml'))\""
+else
+  warn "policy.yaml YAML check skipped (PyYAML not installed; scripts use a fallback parser)" "false"
+fi
 check "smurf.md exists"                       "test -f $PLUGIN_ROOT/smurf.md"
+check "lib/policy.sh exists"                  "test -f $PLUGIN_ROOT/lib/policy.sh"
 
 echo
 echo "=== [plugin] Agents ==="
@@ -74,17 +81,17 @@ done
 
 echo
 echo "=== [plugin] Slash commands ==="
-for c in init kickoff kickoff-team kickoff-workflow nightly-run close-loop; do
+for c in init kickoff-team kickoff-workflow nightly-run close-loop bootstrap; do
   check "commands/$c.md exists" "test -f $PLUGIN_ROOT/commands/$c.md"
 done
 
 echo
 echo "=== [plugin] Scripts ==="
 for s in autonomous-run.sh close-loop.py doctor.sh install-cron.sh init-project.sh \
-         build-wiki-index.py append-wiki-log.py wiki_lint.py; do
+         build-wiki-index.py append-wiki-log.py wiki_lint.py _policy.py; do
   check "scripts/$s exists" "test -f $PLUGIN_ROOT/scripts/$s"
 done
-for s in build-wiki-index.py append-wiki-log.py wiki_lint.py; do
+for s in build-wiki-index.py append-wiki-log.py wiki_lint.py _policy.py; do
   check "scripts/$s parses as Python" "python3 -c \"import ast; ast.parse(open('$PLUGIN_ROOT/scripts/$s').read())\""
 done
 
@@ -118,7 +125,7 @@ warn ".claude/worktrees/ empty or absent (leftover worktrees may hide wave-7 inp
 
 echo
 echo "=== [project] Settings ==="
-warn "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in user settings (required for /smurf:kickoff-team)" \
+warn "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in user settings (enables peer-to-peer wave 3; /smurf:kickoff-team degrades to subagent mode without it)" \
   "jq -e '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS == \"1\"' $PROJECT_ROOT/.claude/settings.local.json $PROJECT_ROOT/.claude/settings.json 2>/dev/null | grep -q true"
 warn "CLAUDE_CODE_DISABLE_WORKFLOWS not set to 1 (workflows enabled for /smurf:kickoff-workflow)" \
   "test \"\$(printenv CLAUDE_CODE_DISABLE_WORKFLOWS)\" != 1"

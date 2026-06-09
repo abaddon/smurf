@@ -11,7 +11,7 @@ spawns workers, and writes the final run summary.
 
 | Field | Value | Why |
 |---|---|---|
-| `name` | `orchestrator` | invoked as `@orchestrator` and via `/kickoff-team` |
+| `name` | `orchestrator` | role adopted by the MAIN session via `/smurf:kickoff-team` / `/smurf:kickoff-workflow` (never run as a subagent — subagents cannot spawn subagents) |
 | `description` | "Top-level coordinator..." | Claude Code routes by description text |
 | `tools` | `Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task` | enough to read inputs, write summaries, run shell, track progress + `Task` for subagent dispatch |
 | `model` | `opus` | research §1.2: Agent-Teams lead requires Opus 4.6+; orchestrator is the lead |
