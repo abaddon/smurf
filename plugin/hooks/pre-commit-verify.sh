@@ -37,21 +37,11 @@ fi
 
 # Resolve verify_command: project policy override wins, plugin default
 # fallback, hardcoded ./verify.sh last.
-POLICY="$PROJECT_ROOT/.claude/policy.yaml"
-[ -f "$POLICY" ] || POLICY="$PLUGIN_ROOT/policy.yaml"
+. "$PLUGIN_ROOT/lib/policy.sh"
 
 VERIFY_CMD=""
-if [ -f "$POLICY" ]; then
-  if command -v yq >/dev/null 2>&1; then
-    VERIFY_CMD=$(yq -r '.verify_command // empty' "$POLICY" 2>/dev/null || true)
-  else
-    VERIFY_CMD=$(awk '$1=="verify_command:" {
-      sub(/^[[:space:]]*verify_command:[[:space:]]*/, "");
-      gsub(/^"|"[[:space:]]*(#.*)?$/, "");
-      gsub(/^'\''|'\''[[:space:]]*(#.*)?$/, "");
-      print; exit
-    }' "$POLICY")
-  fi
+if POLICY=$(policy_file "$PROJECT_ROOT" "$PLUGIN_ROOT"); then
+  VERIFY_CMD=$(policy_scalar verify_command "$POLICY")
 fi
 [ -z "$VERIFY_CMD" ] && VERIFY_CMD="./verify.sh"
 

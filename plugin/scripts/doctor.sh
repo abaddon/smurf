@@ -59,6 +59,7 @@ else
   warn "policy.yaml YAML check skipped (PyYAML not installed; scripts use a fallback parser)" "false"
 fi
 check "smurf.md exists"                       "test -f $PLUGIN_ROOT/smurf.md"
+check "lib/policy.sh exists"                  "test -f $PLUGIN_ROOT/lib/policy.sh"
 
 echo
 echo "=== [plugin] Agents ==="
@@ -87,10 +88,10 @@ done
 echo
 echo "=== [plugin] Scripts ==="
 for s in autonomous-run.sh close-loop.py doctor.sh install-cron.sh init-project.sh \
-         build-wiki-index.py append-wiki-log.py wiki_lint.py; do
+         build-wiki-index.py append-wiki-log.py wiki_lint.py _policy.py; do
   check "scripts/$s exists" "test -f $PLUGIN_ROOT/scripts/$s"
 done
-for s in build-wiki-index.py append-wiki-log.py wiki_lint.py; do
+for s in build-wiki-index.py append-wiki-log.py wiki_lint.py _policy.py; do
   check "scripts/$s parses as Python" "python3 -c \"import ast; ast.parse(open('$PLUGIN_ROOT/scripts/$s').read())\""
 done
 

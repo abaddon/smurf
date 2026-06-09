@@ -30,10 +30,10 @@ if [ ! -f ".claude/runs/next-goal.md" ]; then
   exit 1
 fi
 
-# Policy: project override wins, plugin default fallback.
-POLICY=".claude/policy.yaml"
-[ -f "$POLICY" ] || POLICY="$PLUGIN_ROOT/policy.yaml"
-if [ ! -f "$POLICY" ]; then
+# Policy: project override wins, plugin default fallback (lib/policy.sh
+# is the single bash-side parser).
+. "$PLUGIN_ROOT/lib/policy.sh"
+if ! POLICY=$(policy_file "$PROJECT_ROOT" "$PLUGIN_ROOT"); then
   echo "ERROR: policy.yaml not found in $PROJECT_ROOT/.claude/ or $PLUGIN_ROOT/." >&2
   exit 1
 fi
@@ -58,21 +58,14 @@ esac
 # ---- budget + turn-cap resolution ----
 if [ -n "${BUDGET_OVERRIDE:-}" ]; then
   BUDGET="$BUDGET_OVERRIDE"
-elif command -v yq >/dev/null 2>&1; then
-  BUDGET=$(yq -r ".budget_usd_${MODE}" "$POLICY")
 else
-  # Fallback: grep the line
-  BUDGET=$(awk -v key="budget_usd_${MODE}:" '$1==key {print $2}' "$POLICY")
+  BUDGET=$(policy_scalar "budget_usd_${MODE}" "$POLICY")
 fi
 [ -z "$BUDGET" ] && BUDGET="12"
 
 # max_turns_orchestrator caps the headless main session (which runs the
 # orchestrator role). Policy is the single source of truth for caps.
-if command -v yq >/dev/null 2>&1; then
-  MAX_TURNS=$(yq -r ".max_turns_orchestrator" "$POLICY")
-else
-  MAX_TURNS=$(awk '$1=="max_turns_orchestrator:" {print $2}' "$POLICY")
-fi
+MAX_TURNS=$(policy_scalar max_turns_orchestrator "$POLICY")
 case "$MAX_TURNS" in (*[!0-9]*|"") MAX_TURNS="200" ;; esac
 
 # ---- watchdog ----
@@ -253,12 +246,14 @@ if [ -x "$PLUGIN_ROOT/scripts/append-wiki-log.py" ]; then
   # Commit the fallback row so the next run doesn't start with a dirty
   # tree. If the orchestrator already logged+committed this run, the
   # idempotent append above was a no-op and porcelain is empty → skip.
-  # (Projects overriding wiki.log_path keep the old behaviour: the row
-  # stays uncommitted until the next orchestrator commit.)
+  # The log path honours a project's wiki.log_path override, same as
+  # append-wiki-log.py.
+  WIKI_LOG_REL=$(policy_scalar wiki.log_path "$POLICY")
+  [ -z "$WIKI_LOG_REL" ] && WIKI_LOG_REL="docs/wiki/log.md"
   if git rev-parse --git-dir >/dev/null 2>&1; then
-    if [ -n "$(git status --porcelain -- docs/wiki/log.md 2>/dev/null)" ]; then
-      git add docs/wiki/log.md >> "$RUN_DIR/wiki-log.out" 2>&1 || true
-      git commit -q -m "docs(wiki): log run $TS (autonomous fallback)" -- docs/wiki/log.md \
+    if [ -n "$(git status --porcelain -- "$WIKI_LOG_REL" 2>/dev/null)" ]; then
+      git add "$WIKI_LOG_REL" >> "$RUN_DIR/wiki-log.out" 2>&1 || true
+      git commit -q -m "docs(wiki): log run $TS (autonomous fallback)" -- "$WIKI_LOG_REL" \
         >> "$RUN_DIR/wiki-log.out" 2>&1 || true
     fi
   fi

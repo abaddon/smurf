@@ -32,7 +32,8 @@ How the orchestrator runs unattended.
 | `.claude/runs/<ts>/meta.txt` | mode, budget, watchdog, git head, branch |
 | `.claude/runs/<ts>/run.ndjson` | full Claude Code transcript (stream-json) |
 | `.claude/runs/<ts>/run.err` | stderr |
-| `.claude/runs/<ts>/summary.md` | written by `on-stop-summary.sh` (Stop hook) |
+| `.claude/runs/<ts>/summary.md` | the orchestrator's rich summary (OUTPUT CONTRACT); written by `on-stop-summary.sh` only when the orchestrator did not write one |
+| `.claude/runs/<ts>/stop-summary.md` | `on-stop-summary.sh`'s digest when `summary.md` already exists (never clobbers it) |
 | `.claude/runs/<ts>/agents.log` | one line per subagent (SubagentStop hook) |
 | `.claude/runs/<ts>/partial-summary.json` | only if watchdog fires |
 | `.claude/runs/<ts>/close-loop.{out,err}` | Phase 7+, if `close-loop.py` is present |
@@ -54,12 +55,14 @@ discovery of project-local `~/.claude` settings. That would break
 calls) and disable our hooks. Reproducibility tradeoff is accepted: the
 project root is the source of truth and is git-pinned anyway.
 
-### Why `--max-turns 200` instead of relying on `--max-budget-usd`
+### Why `--max-turns` (from policy) instead of relying on `--max-budget-usd`
 
 Under subscription billing, `--max-budget-usd` is best-effort (the
 subscription's monthly cap is the real spending ceiling). `--max-turns`
 is the deterministic upper bound on time and computation. We pass both;
 the budget flag is the *intent*, the turns flag is the *enforcement*.
+Both values come from policy: `budget_usd_<mode>` and
+`max_turns_orchestrator` (shipped default 200).
 
 ## `install-cron.sh` contract
 

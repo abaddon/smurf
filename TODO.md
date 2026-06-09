@@ -10,6 +10,8 @@ verification: test-hooks 30/30, test-wiki 19/19, test-scripts 24/24
 marketplace.json valid JSON, every shell script passes bash -n.
 The only remaining decision is non-code and owner-only: choosing a
 license (C7 note). Per-item details below; resolution notes inline.
+A post-fix 7-angle code review of the full branch diff produced 9
+findings (section D below) — all fixed in the same pass.
 
 ## A. Bugs (broken behaviour today) — ALL FIXED
 
@@ -256,3 +258,45 @@ Open decision left for the owner (not a code task): pick a license
   When `autonomous-run.sh` appends the fallback row to `docs/wiki/log.md`
   (orchestrator crashed/timed out), nothing commits it — the next run
   starts with a dirty tree. Commit it in the script or document why not.
+
+## D. Post-fix code review of the branch diff — ALL FIXED
+
+A 7-angle review (line-by-line, removed-behavior, cross-file,
+reuse/simplification/efficiency/altitude) of `a0b92ff...HEAD` found no
+correctness bugs in the plugin changes, but caught doc drift the fixes
+introduced in `docs/specs/` plus four cleanup items. All fixed:
+
+- [x] **D1.** spec 09 said `verify_command` is "informational; hook always
+  invokes ./verify.sh" — now documents that pre-commit-verify.sh executes it.
+- [x] **D2.** spec 09 embedded the pre-C4 hooks registration (two `Bash`
+  matcher groups, `.claude/settings.json` location) — snippet and
+  registration location updated; the pre-commit hook's self-filtering
+  (incl. compound commands) documented.
+- [x] **D3.** spec 14 cap table said `max_turns_orchestrator` default 60 —
+  now 200 with the enforcement note.
+- [x] **D4.** spec 12 outputs table credited `summary.md` solely to the Stop
+  hook — now documents orchestrator ownership + the `stop-summary.md`
+  divert; the `--max-turns` rationale section notes both flags come
+  from policy.
+- [x] **D5.** nightly-run.md now mentions `stop-summary.md` in the post-run
+  summary instructions.
+- [x] **D6.** Policy parsing consolidated to one parser per language:
+  `plugin/lib/policy.sh` (`policy_file`/`policy_scalar`/`policy_list`,
+  yq with awk fallback — sourced by policy-guard.sh,
+  pre-commit-verify.sh, autonomous-run.sh) and
+  `plugin/scripts/_policy.py` (imported by the three wiki scripts).
+  Net: five divergent parsers → two, ~80 lines removed, and the
+  yq-missing-key `null` artifact in the old budget lookup fixed.
+- [x] **D7.** kickoff-team.md no longer enumerates the Team*/Task* tool
+  list (drift-prone duplication) — points at orchestrator.md wave 3.
+- [x] **D8.** autonomous-run.sh's fallback wiki-log commit honours
+  `wiki.log_path` overrides via `policy_scalar` instead of hardcoding
+  `docs/wiki/log.md` (verified end-to-end with a custom path).
+- [x] **D9.** Test helpers unified in `tests/common.sh`
+  (`assert_exit`/`assert_ok`/`assert_cmd` + `test_summary`), sourced by
+  all three suites.
+
+Verified after the fixes: test-hooks 30/30, test-wiki 19/19,
+test-scripts 24/24, doctor.sh 60 checks / 0 failed (now covers
+lib/policy.sh and _policy.py), policy.sh unit-tested with and without
+yq, _policy.py exercised with PyYAML blocked.

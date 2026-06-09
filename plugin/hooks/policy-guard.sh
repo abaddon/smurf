@@ -17,8 +17,7 @@ set -euo pipefail
 # precedence over the plugin-shipped default policy.
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PLUGIN_ROOT}"
-POLICY="$PROJECT_ROOT/.claude/policy.yaml"
-[ -f "$POLICY" ] || POLICY="$PLUGIN_ROOT/policy.yaml"
+. "$PLUGIN_ROOT/lib/policy.sh"
 
 PAYLOAD=$(cat)
 TOOL=$(printf '%s' "$PAYLOAD" | jq -r '.tool_name // empty')
@@ -34,54 +33,21 @@ case "$TOOL" in
   *)      exit 0 ;;
 esac
 
-if [ ! -f "$POLICY" ]; then
+if ! POLICY=$(policy_file "$PROJECT_ROOT" "$PLUGIN_ROOT"); then
   echo "BLOCKED: policy.yaml missing — checked $PROJECT_ROOT/.claude/policy.yaml and $PLUGIN_ROOT/policy.yaml" >&2
   exit 2
 fi
 
-# Forbidden paths — glob style.
-# Use while-read loops instead of `mapfile` for bash 3.2 (macOS default) compatibility.
+# Forbidden paths — glob style. Parsed via lib/policy.sh (yq with awk
+# fallback). while-read instead of `mapfile` for bash 3.2 (macOS default).
 FORBID_PATHS=()
 FORBID_PATTERNS=()
-if command -v yq >/dev/null 2>&1; then
-  while IFS= read -r line; do
-    FORBID_PATHS+=("$line")
-  done < <(yq -r '.forbidden_paths[]' "$POLICY" 2>/dev/null)
-  while IFS= read -r line; do
-    FORBID_PATTERNS+=("$line")
-  done < <(yq -r '.forbidden_patterns[]' "$POLICY" 2>/dev/null)
-else
-  while IFS= read -r line; do
-    FORBID_PATHS+=("$line")
-  done < <(awk '
-    /^forbidden_paths:/ {in_list=1; next}
-    in_list && /^[a-zA-Z]/ {in_list=0}
-    in_list && /^[[:space:]]+-[[:space:]]/ {
-      sub(/^[[:space:]]+-[[:space:]]+/, "");
-      if (match($0, /^"[^"]*"/)) { val = substr($0, 2, RLENGTH-2); print val; next }
-      if (match($0, /^'\''[^'\'']*'\''/)) { val = substr($0, 2, RLENGTH-2); print val; next }
-      val = $0;
-      sub(/[[:space:]]+#.*$/, "", val);
-      sub(/[[:space:]]+$/, "", val);
-      print val;
-    }
-  ' "$POLICY")
-  while IFS= read -r line; do
-    FORBID_PATTERNS+=("$line")
-  done < <(awk '
-    /^forbidden_patterns:/ {in_list=1; next}
-    in_list && /^[a-zA-Z]/ {in_list=0}
-    in_list && /^[[:space:]]+-[[:space:]]/ {
-      sub(/^[[:space:]]+-[[:space:]]+/, "");
-      if (match($0, /^"[^"]*"/)) { val = substr($0, 2, RLENGTH-2); print val; next }
-      if (match($0, /^'\''[^'\'']*'\''/)) { val = substr($0, 2, RLENGTH-2); print val; next }
-      val = $0;
-      sub(/[[:space:]]+#.*$/, "", val);
-      sub(/[[:space:]]+$/, "", val);
-      print val;
-    }
-  ' "$POLICY")
-fi
+while IFS= read -r line; do
+  [ -n "$line" ] && FORBID_PATHS+=("$line")
+done < <(policy_list forbidden_paths "$POLICY")
+while IFS= read -r line; do
+  [ -n "$line" ] && FORBID_PATTERNS+=("$line")
+done < <(policy_list forbidden_patterns "$POLICY")
 
 # Normalize FILE to project-relative path for matching.
 REL_FILE="${FILE#$PROJECT_ROOT/}"

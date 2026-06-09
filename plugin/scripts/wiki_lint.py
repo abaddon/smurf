@@ -41,38 +41,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", Path(__file__).resolve().parent.parent))
 
-
-def load_policy() -> dict:
-    for p in [PROJECT_ROOT / ".claude" / "policy.yaml", PLUGIN_ROOT / "policy.yaml"]:
-        if p.is_file():
-            try:
-                import yaml  # type: ignore
-                return yaml.safe_load(p.read_text()) or {}
-            except ImportError:
-                return _minimal_yaml(p.read_text())
-    return {}
+from _policy import load_policy  # shared policy parser (same dir)
 
 
-def _minimal_yaml(text: str) -> dict:
-    wiki: dict = {}
-    in_wiki = False
-    for raw in text.splitlines():
-        if raw.startswith("wiki:"):
-            in_wiki = True
-            continue
-        if in_wiki:
-            if raw and not raw.startswith(("  ", "\t")):
-                break
-            if ":" in raw:
-                k, _, v = raw.strip().partition(":")
-                v = v.strip().strip('"').strip("'")
-                if v.lower() in ("true", "false"):
-                    wiki[k] = v.lower() == "true"
-                elif v.isdigit():
-                    wiki[k] = int(v)
-                elif v:
-                    wiki[k] = v
-    return {"wiki": wiki}
 
 
 # ---------------- ADR parsing ----------------
@@ -288,7 +259,7 @@ def run_lint() -> tuple[list[dict], dict]:
     adrs = [parse_adr(p) for p in sorted(adr_dir.glob("*.md"))] if adr_dir.is_dir() else []
     stories = [parse_story(p) for p in sorted(story_dir.glob("*/*.feature"))] if story_dir.is_dir() else []
 
-    policy = load_policy()
+    policy = load_policy(PROJECT_ROOT, PLUGIN_ROOT)
     wiki = policy.get("wiki") if isinstance(policy.get("wiki"), dict) else {}
     days = (wiki or {}).get("lint_orphan_days", 30)
 
@@ -309,7 +280,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    policy = load_policy()
+    policy = load_policy(PROJECT_ROOT, PLUGIN_ROOT)
     wiki = policy.get("wiki") if isinstance(policy.get("wiki"), dict) else {}
     if wiki and wiki.get("enabled") is False:
         print("[wiki-lint] wiki.enabled=false; skipping")

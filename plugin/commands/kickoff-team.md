@@ -27,9 +27,9 @@ The contract in one breath:
 
 - Agent Teams needs `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in the
   project's `.claude/settings.json` or `.claude/settings.local.json`
-  (the plugin cannot set it for the user) AND the full dispatch
-  surface: `TeamCreate`, `TeamDelete`, `SendMessage`, `TaskCreate`,
-  `TaskUpdate`, `TaskList`, `TaskGet`.
+  (the plugin cannot set it for the user) AND the full Team*/Task*/
+  SendMessage dispatch surface — the exact tool list and probe
+  procedure live in orchestrator.md wave 3.
 - Probe miss → DEGRADE to subagent mode for wave 3, visibly (log line
   + run summary note, `budget_usd_subagent` tier). Never bail, never
   degrade silently.

@@ -29,7 +29,10 @@ when prompted.
 ## When the run finishes
 
 Summarize from `.claude/runs/<latest>/summary.md` — or
-`partial-summary.json` if the watchdog fired:
+`partial-summary.json` if the watchdog fired. (`stop-summary.md`, when
+present, holds the Stop hook's digest for runs where the orchestrator
+wrote its own `summary.md`; include anything notable from it.)
+Report:
 - goal
 - waves executed
 - qa_iterations

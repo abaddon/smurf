@@ -27,19 +27,7 @@ exit 0
 EOF
 chmod +x "$TESTPROJ/verify.sh"
 
-PASS=0
-FAIL=0
-
-assert_exit() {
-  local name="$1" expected="$2" actual="$3"
-  if [ "$expected" = "$actual" ]; then
-    echo "  PASS  $name (exit=$actual)"
-    PASS=$((PASS+1))
-  else
-    echo "  FAIL  $name (expected exit $expected, got $actual)"
-    FAIL=$((FAIL+1))
-  fi
-}
+. "$(dirname "$0")/common.sh"
 
 run_hook() {
   local hook="$1" payload_b64="$2"
@@ -241,8 +229,4 @@ else
 fi
 unset CLAUDE_RUN_TS
 
-echo
-echo "=== Result ==="
-echo "passed=$PASS  failed=$FAIL"
-[ "$FAIL" = "0" ] || exit 1
-exit 0
+test_summary
