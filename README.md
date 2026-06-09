@@ -132,14 +132,11 @@ The cron installer is idempotent and uses
 `CLAUDE_PLUGIN_ROOT=<plugin location>` so the headless run resolves
 the plugin correctly.
 
-Force Agent-Teams (peer-to-peer wave 3):
-
-```bash
-> /smurf:kickoff-team "<goal with parallel features>"
-```
-
-Agent Teams mode requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in
-your project's `.claude/settings.local.json`.
+Peer-to-peer wave 3 (Agent Teams): `/smurf:kickoff-team` *attempts* an
+Agent Team for wave 3 and degrades to plain subagent mode when the
+host doesn't support it. To enable the Agent-Teams path, set
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your project's
+`.claude/settings.local.json`.
 
 Dynamic Workflows (experimental):
 
@@ -227,12 +224,13 @@ features, can be developed in parallel." > .claude/runs/next-goal.md
 All 7 phases shipped:
 - Phase 1: orchestrator + developer + qa-engineer minimal loop.
 - Phase 2: full subagent suite + slash commands.
-- Phase 3: 6 hooks + policy.yaml + 13/13 hook smoke tests pass.
+- Phase 3: 6 hooks + policy.yaml + hook smoke-test suite (`tests/`).
 - Phase 4: 5 skills + rigor-level branching.
 - Phase 5: `autonomous-run.sh` + watchdog + `install-cron.sh` + `doctor.sh`.
 - Phase 6a: Agent Teams wave-3 with architect-advisor.
 - Phase 6b: OpenRouter shell-out for marketing/sales.
 - Phase 7: `close-loop.py` cross-run feedback + 14 specs.
+- Phase 8: wiki layer (`docs/wiki/` index + run log + lint health report).
 - Phase 9: Dynamic Workflows (`/smurf:kickoff-workflow`) + `/ultrareview`
   QA integration (experimental, research-preview; gate/wrap/delegate only).
 

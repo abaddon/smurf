@@ -20,14 +20,15 @@ forbidden_paths:
 forbidden_patterns: []
 
 # Single command every agent uses to verify work. Project owner replaces
-# verify.sh body with real tests; agents only call this shim.
+# verify.sh body with real tests; agents only call this shim. The
+# pre-commit-verify hook runs this command before any git commit lands.
 verify_command: "./verify.sh"
 
 # Iteration cap: max times the orchestrator re-dispatches developer
 # after a failing QA report.
 max_qa_iterations: 2
 
-# Concurrency cap: max parallel subagents (research §1.7 token-burn).
+# Concurrency cap: max parallel subagents (token-burn guard).
 max_parallel_subagents: 4
 
 # Advisory cap smurf passes into the wave-3 dynamic-workflow prompt. The
@@ -35,12 +36,14 @@ max_parallel_subagents: 4
 # total); this bounds the total fan-out smurf asks for.
 max_workflow_subagents: 64
 
-# Per-agent turn caps.
-max_turns_orchestrator: 60
+# Per-agent turn caps. max_turns_orchestrator is enforced: autonomous-run.sh
+# passes it as the headless session's --max-turns (the headless main session
+# runs the orchestrator role). max_turns_subagent is advisory for dispatch.
+max_turns_orchestrator: 200
 max_turns_subagent: 30
 
 # Cost ceilings for autonomous (cron) runs. Agent Teams budget is higher
-# because peer-to-peer messaging burns 7-15× tokens (research §1.7).
+# because peer-to-peer messaging burns 7-15× the tokens of subagent mode.
 budget_usd_subagent: 12
 budget_usd_team: 25
 # Dynamic Workflows can fan out to as many as 1,000 subagents, so the

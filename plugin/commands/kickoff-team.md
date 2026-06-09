@@ -56,8 +56,7 @@ a host CLI exposing the full `Task*` surface, then re-run
 4. When all tasks reach `done`, call `TeamDelete` to release the team.
 5. Use `budget_usd_team` from the project's `.claude/policy.yaml` if
    present, otherwise from `${CLAUDE_PLUGIN_ROOT}/policy.yaml` (higher
-   than subagent-mode budget — Agent Teams burn 7-15× tokens per
-   research §1.7).
+   than subagent-mode budget — Agent Teams burn 7-15× the tokens).
 
 All other waves (1, 2, 4, 5, 6, 7) remain subagent mode.
 

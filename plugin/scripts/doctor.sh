@@ -124,7 +124,7 @@ warn ".claude/worktrees/ empty or absent (leftover worktrees may hide wave-7 inp
 
 echo
 echo "=== [project] Settings ==="
-warn "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in user settings (required for /smurf:kickoff-team)" \
+warn "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in user settings (enables peer-to-peer wave 3; /smurf:kickoff-team degrades to subagent mode without it)" \
   "jq -e '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS == \"1\"' $PROJECT_ROOT/.claude/settings.local.json $PROJECT_ROOT/.claude/settings.json 2>/dev/null | grep -q true"
 warn "CLAUDE_CODE_DISABLE_WORKFLOWS not set to 1 (workflows enabled for /smurf:kickoff-workflow)" \
   "test \"\$(printenv CLAUDE_CODE_DISABLE_WORKFLOWS)\" != 1"

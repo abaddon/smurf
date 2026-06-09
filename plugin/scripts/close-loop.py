@@ -39,6 +39,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 FEEDBACK_DIR = PROJECT_ROOT / "docs" / "feedback"
 
+# Deliberate script-level constants, not policy.yaml keys: close-loop is a
+# fixed-scope digest (one file out, read-only sources), not an orchestrator
+# run governed by the policy caps. smurf.md's "caps live in policy.yaml"
+# rule applies to agent/orchestrator runs.
+CLAUDE_MAX_TURNS = "20"
+CLAUDE_BUDGET_USD = "1.50"
+
 PROMPT_TEMPLATE = """Read-only analytics summary for the last {window}.
 
 Write a single markdown file at docs/feedback/{date}.md with this exact
@@ -133,9 +140,16 @@ def main() -> int:
 
     cmd = [
         "claude", "-p", prompt,
-        "--allowedTools", "Read,Write,mcp__github,mcp__sentry,mcp__linear",
-        "--max-turns", "20",
-        "--max-budget-usd", "1.50",
+        # Read-only MCP surface: name the specific github read tools instead
+        # of the whole server (which includes write tools the contract bans).
+        # sentry/linear stay server-level: their tool names depend on the
+        # user-supplied server config, and both are read-oriented sources.
+        "--allowedTools",
+        "Read,Write,"
+        "mcp__github__list_issues,mcp__github__get_issue,mcp__github__search_issues,"
+        "mcp__sentry,mcp__linear",
+        "--max-turns", CLAUDE_MAX_TURNS,
+        "--max-budget-usd", CLAUDE_BUDGET_USD,
         "--output-format", "stream-json",
         "--verbose",  # required by `claude -p` whenever output-format is stream-json
     ]

@@ -113,32 +113,44 @@ where the A work changed their scope.
   completions return `usage.cost`, and only when the request includes
   `"usage": {"include": true}` — as written the cost is always `0`.
 
-## B. Doc / spec inconsistencies (misleading but not breaking)
+## B. Doc / spec inconsistencies (misleading but not breaking) — ALL FIXED
 
-- [ ] **B1. `pre-commit-verify.sh` header lies about its registration.**
+Fixed 2026-06-09 (second pass). B1+B7 landed together in
+`pre-commit-verify.sh` (header corrected, compound `git commit`
+detection hardened, `verify_command` wired from policy — 4 new hook
+tests, suite 29/29). B6 wired `--max-turns` from
+`max_turns_orchestrator` (policy value raised 60→200 to preserve the
+previously enforced behaviour) and documented close-loop's
+fixed-scope constants. B8 removed `permissionMode: ask` — per the
+docs the field is ignored for plugin subagents and `ask` was never a
+valid value. Phase 8 in the README turned out to be the wiki layer
+(per docs/specs/00-overview.md), so B4 added it rather than
+renumbering.
+
+- [x] **B1. `pre-commit-verify.sh` header lies about its registration.**
   Lines 10-11 claim a `^git commit` matcher "registered in settings.json";
   it's actually registered in `hooks/hooks.json` with matcher `Bash` and
   self-filters. Also note: a compound `cd x && git commit` bypasses the
   `^git commit` regex, so verify can be skipped — document or harden.
 
-- [ ] **B2. `smurf.md:10-12` points to `docs/research.md`** — the file does
+- [x] **B2. `smurf.md:10-12` points to `docs/research.md`** — the file does
   not exist anywhere in the repo (policy.yaml and kickoff-team.md also cite
   "research §1.7"). Either add the doc or drop the references.
 
-- [ ] **B3. README "Force Agent-Teams" section is stale.** Since #12,
+- [x] **B3. README "Force Agent-Teams" section is stale.** Since #12,
   `/smurf:kickoff-team` *attempts* Agent Teams and degrades — nothing
   forces it. Same stale wording in doctor.sh:121
   ("required for /smurf:kickoff-team" — it's optional now).
 
-- [ ] **B4. README Status section drift.** "13/13 hook smoke tests pass" —
+- [x] **B4. README Status section drift.** "13/13 hook smoke tests pass" —
   the suite now reports 25 passing (was 24 at review time; the A3 fix
   added a no-clobber test); phases jump 7 → 9 with no Phase 8.
 
-- [ ] **B5. `developer.md:13-15` names `/kickoff-team` for *both* modes**
+- [x] **B5. `developer.md:13-15` names `/kickoff-team` for *both* modes**
   ("In Agent Teams mode (`/kickoff-team`) … in subagent mode
   (`/kickoff-team`)") — leftover from when subagent mode was `/kickoff`.
 
-- [ ] **B6. Hard-coded caps contradict the house rule.** smurf.md says
+- [x] **B6. Hard-coded caps contradict the house rule.** smurf.md says
   "Edit policy.yaml, never hard-code numbers in agent prompts or scripts",
   yet `autonomous-run.sh` hard-codes `--max-turns 200` (policy says
   `max_turns_orchestrator: 60`) and `close-loop.py:138-139` hard-codes
@@ -147,16 +159,16 @@ where the A work changed their scope.
   `--max-budget-usd` to policy; the turn caps and close-loop values
   remain.
 
-- [ ] **B7. `verify_command` policy key is read by no hook or script.**
+- [x] **B7. `verify_command` policy key is read by no hook or script.**
   `pre-commit-verify.sh` hard-codes `./verify.sh`. Either wire the key up
   or document it as agent-prompt-only.
 
-- [ ] **B8. `devops.md` frontmatter `permissionMode: ask`** — not a
+- [x] **B8. `devops.md` frontmatter `permissionMode: ask`** — not a
   documented value (documented: `default`, `acceptEdits`, `plan`,
   `bypassPermissions`). Verify it does anything; the agent body also
   asserts "every Bash invocation prompts", which depends on it.
 
-- [ ] **B9. `/smurf:close-loop` uses `!`-inline execution** for a
+- [x] **B9. `/smurf:close-loop` uses `!`-inline execution** for a
   `claude -p` call that can run for minutes, while `nightly-run.md`
   explicitly warns that long-running scripts must use background Bash,
   not `!` expansion. Inconsistent guidance for the same problem.
@@ -168,10 +180,14 @@ where the A work changed their scope.
   injecting "unknown — docs/rigor-level.md missing" noise. Exit silently
   (no output) when no smurf scaffolding is detected.
 
-- [ ] **C2. Restrict `close-loop.py` MCP surface to read-only.**
+- [x] **C2. Restrict `close-loop.py` MCP surface to read-only.**
   `--allowedTools …,mcp__github,…` grants the whole GitHub MCP server,
   including write tools, while the prompt merely asks the model not to use
   them. Allowlist the specific read tools instead.
+  (Done as part of the B6 close-loop.py edit: github restricted to
+  `list_issues`/`get_issue`/`search_issues`; sentry/linear stay
+  server-level because their tool names depend on user-supplied
+  configs and both are read-oriented.)
 
 - [ ] **C3. Deduplicate the wave-3 gate prose.** The Dynamic-Workflows gate
   and the Agent-Teams capability probe are spelled out nearly verbatim in
@@ -182,7 +198,12 @@ where the A work changed their scope.
   `hooks/hooks.json`** into one entry with two hooks — same behaviour,
   less duplication.
 
-- [ ] **C5. Verify the orchestrator can actually spawn subagents.** The
+- [ ] **C5. CONFIRMED BUG (was: verify): the orchestrator cannot spawn
+  subagents when invoked via `@orchestrator`.** Docs verified
+  (code.claude.com/docs/en/sub-agents): "Subagents cannot spawn other
+  subagents" — the Agent/Task tool is unavailable inside a subagent.
+  Fix: kickoff commands must instruct the MAIN session to adopt the
+  orchestrator role (bootstrap.md already uses this pattern).** The
   kickoff commands invoke `@orchestrator: $ARGUMENTS`, i.e. the
   orchestrator runs *as a subagent*, and subagents normally cannot use
   `Task` to spawn further subagents. If that restriction applies on the

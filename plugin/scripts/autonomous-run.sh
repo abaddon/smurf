@@ -55,7 +55,7 @@ case "$MODE" in
   *) echo "ERROR: MODE must be 'subagent' or 'team', got '$MODE'." >&2; exit 1 ;;
 esac
 
-# ---- budget resolution ----
+# ---- budget + turn-cap resolution ----
 if [ -n "${BUDGET_OVERRIDE:-}" ]; then
   BUDGET="$BUDGET_OVERRIDE"
 elif command -v yq >/dev/null 2>&1; then
@@ -65,6 +65,15 @@ else
   BUDGET=$(awk -v key="budget_usd_${MODE}:" '$1==key {print $2}' "$POLICY")
 fi
 [ -z "$BUDGET" ] && BUDGET="12"
+
+# max_turns_orchestrator caps the headless main session (which runs the
+# orchestrator role). Policy is the single source of truth for caps.
+if command -v yq >/dev/null 2>&1; then
+  MAX_TURNS=$(yq -r ".max_turns_orchestrator" "$POLICY")
+else
+  MAX_TURNS=$(awk '$1=="max_turns_orchestrator:" {print $2}' "$POLICY")
+fi
+case "$MAX_TURNS" in (*[!0-9]*|"") MAX_TURNS="200" ;; esac
 
 # ---- watchdog ----
 WATCHDOG="${WATCHDOG_OVERRIDE:-4h}"
@@ -184,7 +193,7 @@ PROMPT="/smurf:kickoff-team $GOAL"
 
 # ---- run ----
 # Note: --bare deliberately NOT used — it would suppress .mcp.json auto-load
-# and break mcp__github (research §1.5 + plan §8).
+# and break mcp__github.
 # --max-turns is the real ceiling under subscription billing; --max-budget-usd
 # is best-effort.
 # Note: agents read smurf.md / policy.yaml via the Read tool (not `cat`),
@@ -196,7 +205,7 @@ set +e
 run_with_watchdog "$WATCHDOG" \
   claude -p "$PROMPT" \
     --allowedTools "$ALLOWED_TOOLS" \
-    --max-turns 200 \
+    --max-turns "$MAX_TURNS" \
     --max-budget-usd "$BUDGET" \
     --output-format stream-json --verbose \
     > "$RUN_DIR/run.ndjson" 2> "$RUN_DIR/run.err"

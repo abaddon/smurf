@@ -136,6 +136,43 @@ chmod +x "$TESTPROJ/verify.sh"
 P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status"}}' | base64 -w0)
 assert_exit "skip pre-commit-verify on non-commit command" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
 
+# Compound commands cannot bypass the git-commit filter.
+cat > "$TESTPROJ/verify.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+chmod +x "$TESTPROJ/verify.sh"
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"cd /tmp && git commit -m x"}}' | base64 -w0)
+assert_exit "block compound 'cd … && git commit' when verify fails" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
+
+# 'git commit' as a plain word inside arguments must not trigger verify.
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"echo \"git commit\""}}' | base64 -w0)
+assert_exit "skip when 'git commit' is only a word in args" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
+
+# verify_command override: the hook must run the project policy's command.
+cat > "$TESTPROJ/verify.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$TESTPROJ/verify.sh"
+mkdir -p "$TESTPROJ/.claude"
+printf 'verify_command: "./custom-verify.sh"\n' > "$TESTPROJ/.claude/policy.yaml"
+cat > "$TESTPROJ/custom-verify.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+chmod +x "$TESTPROJ/custom-verify.sh"
+P=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git commit -m test"}}' | base64 -w0)
+assert_exit "block commit when policy verify_command fails (default verify.sh passes)" 2 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
+
+cat > "$TESTPROJ/custom-verify.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$TESTPROJ/custom-verify.sh"
+assert_exit "allow commit when policy verify_command passes" 0 "$(run_hook "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-verify.sh" "$P")"
+rm -f "$TESTPROJ/.claude/policy.yaml" "$TESTPROJ/custom-verify.sh"
+
 echo
 echo "=== session-start-context ==="
 P=$(printf '%s' '{"hook_event_name":"SessionStart","source":"startup"}' | base64 -w0)
