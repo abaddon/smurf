@@ -121,4 +121,12 @@ assert_ok "partial-summary.json written on watchdog timeout" $?
 grep -q "| terminated |" "$PROJ2/docs/wiki/log.md" 2>/dev/null
 assert_ok "fallback wiki log row appended with status terminated" $?
 
+echo
+echo "=== close-loop.py (--dry-run) ==="
+P3=$(mktemp -d); CLEANUP_DIRS+=("$P3")
+CLAUDE_PROJECT_DIR="$P3" python3 "$CLAUDE_PLUGIN_ROOT/scripts/close-loop.py" --dry-run > /tmp/closeloop-dry.out 2>&1
+assert_ok "dry-run exits 0" $?
+[ -z "$(ls -A "$P3" 2>/dev/null)" ]
+assert_ok "dry-run writes nothing to the project tree" $?
+
 test_summary

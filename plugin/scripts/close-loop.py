@@ -95,15 +95,20 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def run_wiki_lint() -> int:
+def run_wiki_lint(dry_run: bool = False) -> int:
     """Invoke wiki_lint.py in-process. Returns its exit code (0 or 2)."""
     here = Path(__file__).resolve().parent
     lint_script = here / "wiki_lint.py"
     if not lint_script.is_file():
         return 0  # no lint script means feature not deployed; not an error
+    cmd = [sys.executable, str(lint_script)]
+    if dry_run:
+        # Propagate dry-run: lint findings print to stdout, health.md is
+        # NOT written (a dry run must not touch the project tree).
+        cmd.append("--dry-run")
     try:
         return subprocess.run(
-            [sys.executable, str(lint_script)],
+            cmd,
             cwd=PROJECT_ROOT,
             env=os.environ.copy(),
         ).returncode
@@ -120,19 +125,19 @@ def main() -> int:
     # Wiki lint runs first (cheap, deterministic, no network). Its FAIL
     # exit propagates to our own exit at the end. We do NOT abort the
     # LLM digest on lint findings — both artifacts are useful.
-    lint_rc = run_wiki_lint()
+    lint_rc = run_wiki_lint(dry_run=args.dry_run)
 
     if out_path.exists() and not args.force:
         print(f"[close-loop] {out_path} already exists; skipping LLM digest (use --force to overwrite)")
         return 2 if lint_rc == 2 else 0
-
-    FEEDBACK_DIR.mkdir(parents=True, exist_ok=True)
 
     prompt = PROMPT_TEMPLATE.format(window=args.window, date=today)
 
     if args.dry_run:
         print(prompt)
         return 2 if lint_rc == 2 else 0
+
+    FEEDBACK_DIR.mkdir(parents=True, exist_ok=True)
 
     if shutil.which("claude") is None:
         print("[close-loop] ERROR: 'claude' not on PATH", file=sys.stderr)
