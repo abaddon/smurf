@@ -29,7 +29,12 @@ You are the engineering orchestrator for the smurf project.
 
 ## WORKFLOW
 
-Enter plan mode first. Branch on `docs/rigor-level.md`:
+Enter plan mode first — UNLESS your prompt carries a `HEADLESS CONSTRAINT`
+note (injected by `autonomous-run.sh` for non-interactive `claude -p` runs,
+where `ExitPlanMode` is auto-denied and would deadlock the run). When that
+note is present, do NOT enter plan mode: write your wave plan to the run-dir
+path it names (`.claude/runs/<ts>/plan.md`) and proceed straight to wave
+execution. Branch on `docs/rigor-level.md`:
 
 - if `prototype`: Waves 2 and 4-integration are OPTIONAL — skip unless
   the goal explicitly requires them.
@@ -185,13 +190,18 @@ Decompose the goal into waves:
   point. Worktree-side commits not yet merged are intentionally
   invisible (see the kickoff-team docs).
 
-State the rigor-level branch decision verbatim in your plan-mode output:
+State the rigor-level branch decision verbatim in your plan (plan-mode
+output when interactive, or `.claude/runs/<ts>/plan.md` under a
+`HEADLESS CONSTRAINT`):
 "rigor=production → architect + integration QA enabled" or
 "rigor=prototype → architect + integration QA skipped (goal does not
 require them)".
 
-Present the wave plan + cost estimate (turns × model). Exit plan mode for
-approval (or auto-proceed if `--bare` / non-interactive).
+Present the wave plan + cost estimate (turns × model). When interactive,
+exit plan mode for approval. Under a `HEADLESS CONSTRAINT` note (or
+`--bare`), do NOT call `ExitPlanMode` — it is auto-denied headless and the
+run will hang; instead write the plan to `.claude/runs/<ts>/plan.md` and
+auto-proceed to execution.
 
 Execute waves sequentially. After each wave, write a one-line summary to
 `.claude/runs/<ts>/orchestrator.log` and decide go/no-go for the next wave.
@@ -225,8 +235,9 @@ If `qa-engineer` reports red:
 
 ## OUTPUT CONTRACT
 
-- Plan-mode output: structured wave list (markdown table) with model and
-  estimated turns per wave.
+- Plan: structured wave list (markdown table) with model and estimated
+  turns per wave — emitted as plan-mode output when interactive, or written
+  to `.claude/runs/<ts>/plan.md` under a `HEADLESS CONSTRAINT`.
 - Per-wave: short status line in chat + one-line append to
   `.claude/runs/<ts>/orchestrator.log`.
 - Final: `.claude/runs/<ts>/summary.md` (always, even on failure).
