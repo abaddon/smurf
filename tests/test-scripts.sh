@@ -108,6 +108,10 @@ git -C "$PROJ" log --oneline | grep -q "docs(wiki): log run"
 assert_ok "fallback wiki log row committed" $?
 [ -z "$(git -C "$PROJ" status --porcelain -- docs/wiki/log.md 2>/dev/null)" ]
 assert_ok "docs/wiki/log.md left clean in the work tree" $?
+grep -q "HEADLESS CONSTRAINT" "$ARGS"
+assert_ok "headless plan-mode constraint injected into the claude -p prompt" $?
+grep -Eq '\.claude/runs/.*/plan\.md' "$ARGS"
+assert_ok "headless constraint points the orchestrator's plan at the run dir" $?
 
 # --- watchdog: hung claude is killed, partial summary written ---
 PROJ2=$(make_project); CLEANUP_DIRS+=("$PROJ2")

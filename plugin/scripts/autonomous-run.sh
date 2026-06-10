@@ -182,7 +182,18 @@ trap on_term TERM INT
 # /smurf:kickoff-team is the single kickoff: it attempts Agent Teams for
 # wave 3 and degrades to subagent mode on its own. MODE only selects the
 # budget tier above.
-PROMPT="/smurf:kickoff-team $GOAL"
+#
+# Headless plan-mode guard: this is a non-interactive `claude -p` session,
+# where ExitPlanMode is always auto-denied (plan approval is interactive-
+# only). orchestrator.md tells the orchestrator to "enter plan mode first",
+# which would deadlock here — it would ask for an approval that never comes.
+# We are the only component that knows the session is headless, so we say so
+# explicitly; orchestrator.md (WORKFLOW) honours this HEADLESS CONSTRAINT
+# marker by writing its plan to the run dir and proceeding instead.
+HEADLESS_CONSTRAINT="HEADLESS CONSTRAINT: this is a non-interactive 'claude -p' session. Plan-mode approval (ExitPlanMode) is auto-denied here, so do NOT enter plan mode — it will deadlock the run. Write your wave plan to $RUN_DIR/plan.md instead, then proceed directly to wave execution."
+PROMPT="/smurf:kickoff-team $GOAL
+
+$HEADLESS_CONSTRAINT"
 
 # ---- run ----
 # Note: --bare deliberately NOT used — it would suppress .mcp.json auto-load
