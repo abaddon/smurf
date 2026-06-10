@@ -15,6 +15,18 @@ export CLAUDE_PLUGIN_ROOT="$REPO/plugin"
 
 . "$(dirname "$0")/common.sh"
 
+# Set a file's mtime to <days> days ago. GNU `touch -d "N days ago"` is not
+# portable (BSD/macOS touch rejects it, leaving fixtures with fresh mtimes
+# and silently breaking the orphan-story assertions), so use python3 —
+# already a hard dependency of this suite.
+backdate() {
+  python3 -c '
+import os, sys, time
+t = time.time() - int(sys.argv[1]) * 86400
+os.utime(sys.argv[2], (t, t))
+' "$1" "$2"
+}
+
 # Build the fixture tree in a tempdir.
 seed_fixture() {
   local root="$1"
@@ -129,8 +141,8 @@ EOF
 - P1: cache
 EOF
 
-  touch -d "31 days ago" "$root/docs/stories/2026-01-01-old/01-orphan.feature"
-  touch -d "90 days ago" "$root/docs/stories/bootstrap-2026-01-01/01-bootstrap.feature"
+  backdate 31 "$root/docs/stories/2026-01-01-old/01-orphan.feature"
+  backdate 90 "$root/docs/stories/bootstrap-2026-01-01/01-bootstrap.feature"
 }
 
 TMP=$(mktemp -d)
