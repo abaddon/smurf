@@ -190,7 +190,14 @@ trap on_term TERM INT
 # We are the only component that knows the session is headless, so we say so
 # explicitly; orchestrator.md (WORKFLOW) honours this HEADLESS CONSTRAINT
 # marker by writing its plan to the run dir and proceeding instead.
-HEADLESS_CONSTRAINT="HEADLESS CONSTRAINT: this is a non-interactive 'claude -p' session. Plan-mode approval (ExitPlanMode) is auto-denied here, so do NOT enter plan mode — it will deadlock the run. Write your wave plan to $RUN_DIR/plan.md instead, then proceed directly to wave execution."
+#
+# Headless turn guard (same marker): in `claude -p` there is no
+# resume-on-notification — the session ends for good when the orchestrator
+# ends its turn. A previous run dispatched the stack build as a background
+# Bash task and ended its turn "to resume when it completes", orphaning the
+# build and killing the run. The marker therefore also forbids turn-ending
+# waits on background tasks.
+HEADLESS_CONSTRAINT="HEADLESS CONSTRAINT: this is a non-interactive 'claude -p' session. Plan-mode approval (ExitPlanMode) is auto-denied here, so do NOT enter plan mode — it will deadlock the run. Write your wave plan to $RUN_DIR/plan.md instead, then proceed directly to wave execution. Ending your turn terminates this headless session permanently — there is no resume-on-notification. NEVER end your turn to wait for a background task: run long commands (stack builds, test suites, deploys) in the foreground with a generous timeout, or poll with repeated short foreground commands while staying in the turn."
 PROMPT="/smurf:kickoff-team $GOAL
 
 $HEADLESS_CONSTRAINT"

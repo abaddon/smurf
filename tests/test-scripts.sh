@@ -112,6 +112,8 @@ grep -q "HEADLESS CONSTRAINT" "$ARGS"
 assert_ok "headless plan-mode constraint injected into the claude -p prompt" $?
 grep -Eq '\.claude/runs/.*/plan\.md' "$ARGS"
 assert_ok "headless constraint points the orchestrator's plan at the run dir" $?
+grep -q "NEVER end your turn to wait for a background task" "$ARGS"
+assert_ok "headless background-task turn guard injected into the claude -p prompt" $?
 
 # --- watchdog: hung claude is killed, partial summary written ---
 PROJ2=$(make_project); CLEANUP_DIRS+=("$PROJ2")

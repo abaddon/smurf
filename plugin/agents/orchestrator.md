@@ -34,7 +34,15 @@ note (injected by `autonomous-run.sh` for non-interactive `claude -p` runs,
 where `ExitPlanMode` is auto-denied and would deadlock the run). When that
 note is present, do NOT enter plan mode: write your wave plan to the run-dir
 path it names (`.claude/runs/<ts>/plan.md`) and proceed straight to wave
-execution. Branch on `docs/rigor-level.md`:
+execution.
+
+A `HEADLESS CONSTRAINT` also means ending your turn ends the session
+permanently — there is no resume-on-notification in `claude -p`. Never end
+your turn to wait for a background task: run long commands (stack builds,
+test suites, deploys) in the foreground with a generous timeout, or poll
+with repeated short foreground commands while staying in the turn.
+
+Branch on `docs/rigor-level.md`:
 
 - if `prototype`: Waves 2 and 4-integration are OPTIONAL — skip unless
   the goal explicitly requires them.
