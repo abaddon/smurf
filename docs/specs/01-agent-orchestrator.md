@@ -40,7 +40,7 @@ output and exit cleanly.
 |---|---|---|---|
 | 1 — Product | `product-owner` | always | `docs/stories/<sprint>/*.feature` |
 | 2 — Design | `architect` | `rigor=production` (else optional) | `docs/adr/NNNN-*.md` |
-| 3 — Implement | `developer × N` (+ `qa-engineer` + `architect-advisor` in Team mode) | always | code + commits + `qa/<id>.md` |
+| 3 — Implement | `developer × N` (+ `qa-engineer` in Team mode; `architect-advisor` spawned on-demand, never seated idle) | always | code + commits + `qa/<id>.md` |
 | 4 — Deploy | `devops` | always (unless story is doc-only) | CI updates + draft PR |
 | 5 — Promote | `marketing`, `sales-feedback` | always (cheap) | `docs/marketing/`, `docs/feedback/` |
 
@@ -73,13 +73,18 @@ loop:
 
 | Slash command | Wave 3 mode | Budget tier |
 |---|---|---|
-| `/kickoff-team <goal>` | Agent Team (`TeamCreate` with developer×N + qa + architect-advisor); degrades to subagents (workers don't talk to each other) when Agent Teams are unavailable | `budget_usd_team` (subagent fallback: `budget_usd_subagent`) |
+| `/kickoff-team <goal>` | Agent Team (`TeamCreate` with developer×N + qa; architect-advisor spawned on-demand); degrades to subagents (workers don't talk to each other) when Agent Teams are unavailable | `budget_usd_team` (subagent fallback: `budget_usd_subagent`) |
 
 In Agent Team mode, the orchestrator calls:
-1. `TeamCreate` with the team roster
+1. `TeamCreate` with the team roster (`developer × N + qa-engineer` — no
+   idle advisor; one that is never messaged blocks `TeamDelete`)
 2. `TaskCreate` per story (assigns to a developer)
 3. monitors `TaskList` (poll-free; receives status updates)
-4. on all-done: `TeamDelete`
+4. on a developer's design question: spawn a short-lived architect
+   subagent in advisor mode (`Task`, `advisor: true`) and relay the reply
+5. on all-done: `TeamDelete` **best-effort** — if it errors or hangs,
+   fall back to `rm -rf ~/.claude/teams/<name>` and continue; teardown
+   never gates run completion
 
 ## Hard rules
 

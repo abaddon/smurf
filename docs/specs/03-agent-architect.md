@@ -39,13 +39,18 @@ Final chat message: list ADR ids and the ports/adapters each defines.
 
 ### Advisor mode (Wave 3, Agent Teams)
 
-Triggered when invoked as a teammate with `advisor: true` in the
-prompt. The agent's system prompt branches:
-- stay idle until a teammate sends a message
+Spawned on-demand by the orchestrator with `advisor: true` plus a
+developer's design question in the prompt — not seated idle in the team
+roster (a never-messaged advisor blocks `TeamDelete`). The agent's
+system prompt branches:
+- answer the supplied question and return the reply (orchestrator relays
+  it to the developer); do not read/write files speculatively
 - replies ≤200 words; cite ADR id where relevant
 - never edit any file
-- max 8 turns total; on overflow, `shutdown_response` and signal the
+- max 8 turns total; on overflow, return "out of turns" and signal the
   orchestrator to re-spawn the architect as a full subagent
+- safeguard: if a host still seats it as a standing teammate, honor any
+  `shutdown_request` immediately, even with zero messages answered
 
 ## Escalation
 
