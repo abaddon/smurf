@@ -55,7 +55,7 @@ plan is `docs/research.md` — Architettura A from §3.
    Wave 2  architect        → docs/adr/NNNN-*.md       (production rigor)
    Wave 3  developer × N    → src/* + commits          (subagents OR Agent Team)
            qa-engineer      → qa/<id>.md               (red → re-dispatch dev, max 2)
-           architect-advisor (Agent Team only, idle, SendMessage-driven)
+           architect-advisor (Agent Team only, spawned on-demand — never seated idle)
    Wave 4  devops           → CI/CD/PR draft
    Wave 5  marketing        → docs/marketing/<date>/*  (curl OpenRouter)
            sales-feedback   → docs/feedback/<date>.md  (input to next run)
@@ -68,7 +68,7 @@ plan is `docs/research.md` — Architettura A from §3.
 
 | Layer | Trigger | Mechanism | Cap |
 |---|---|---|---|
-| Intra-wave | dev unsure → ask architect | `SendMessage architect-advisor` (Agent Teams only) | unbounded within wave |
+| Intra-wave | dev unsure → ask architect | `SendMessage` orchestrator → spawns on-demand architect-advisor, relays reply (Agent Teams only) | unbounded within wave |
 | Intra-wave | qa finds failing AC | `SendMessage developer` (Agent Teams only) | unbounded within wave |
 | Inter-wave | qa report RED | orchestrator re-dispatches developer with `qa/<id>.md` | `max_qa_iterations` from policy.yaml |
 | Cross-run | overnight | `close-loop.py` writes `docs/feedback/<date>.md` → product-owner reads next run | 1 file/day |

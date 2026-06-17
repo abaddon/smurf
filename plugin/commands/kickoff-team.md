@@ -17,8 +17,9 @@ report back to you, not to each other. Waves 1, 2, 4, 5, 6, and 7
 always run in subagent mode.
 
 For **wave 3 (implement)**, ATTEMPT **Agent Teams mode** (peer-to-peer
-`SendMessage` between developers, qa-engineer, and an
-architect-advisor). The canonical wave-3 procedure lives in
+`SendMessage` between developers and qa-engineer; the architect-advisor
+is spawned on-demand by the orchestrator, never seated idle in the
+roster). The canonical wave-3 procedure lives in
 orchestrator.md — the Agent-Teams requirements, the capability probe to
 run BEFORE `TeamCreate`, the roster/`TaskCreate` choreography on a
 probe pass, and the degrade-to-subagent path on a probe miss are all

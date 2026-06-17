@@ -74,19 +74,45 @@ Decompose the goal into waves:
     for wave 3 when Agent Teams are unavailable (see the capability probe
     below).
   - **Agent Teams mode (via `/kickoff-team`, the default kickoff)**: call `TeamCreate`
-    with the roster `developer × N + qa-engineer × 1 + architect × 1`
-    where the architect runs as **architect-advisor** (idle, replies
-    only to `SendMessage`, max 8 turns, never edits files — see
-    `architect.md` advisor branch). Distribute stories via `TaskCreate`:
-    one task per story, assigned to a specific developer, with the task
-    body containing the absolute story file path plus any ADR refs the
-    dev needs. The assignee reads the task body as its invocation prompt
-    and is responsible for calling `TaskUpdate` to transition
-    `pending` → `in_progress` (on start) → `done` (on completion). The
-    orchestrator does NOT flip task status on assignees' behalf — it
-    only observes. Developers may `SendMessage architect-advisor` for
-    design Q&A; qa-engineer may `SendMessage developer` with failure
-    detail. When all tasks reach `done`, `TeamDelete` to release the team.
+    with the roster `developer × N + qa-engineer × 1` — do NOT seat an
+    idle `architect-advisor` in the initial roster. An advisor that is
+    spawned but never messaged ignores `shutdown_request` and
+    permanently blocks `TeamDelete`; keep architect advice **on-demand**
+    (see below) so teardown can always complete. Distribute stories via
+    `TaskCreate`: one task per story, assigned to a specific developer,
+    with the task body containing the absolute story file path plus any
+    ADR refs the dev needs. The assignee reads the task body as its
+    invocation prompt and is responsible for calling `TaskUpdate` to
+    transition `pending` → `in_progress` (on start) → `done` (on
+    completion). The orchestrator does NOT flip task status on assignees'
+    behalf — it only observes. qa-engineer may `SendMessage developer`
+    with failure detail.
+
+    **Architect advice — on-demand only.** There is no standing advisor
+    teammate. A developer that needs a design ruling `SendMessage`s the
+    ORCHESTRATOR (the team lead, always reachable), not a seated advisor.
+    On receiving such a request, the orchestrator spawns a short-lived
+    architect subagent in advisor mode (`Task` with `advisor: true`, max
+    8 turns, read-only — see `architect.md` ADVISOR MODE), then relays
+    the reply to the requesting developer via `SendMessage`. The advisor
+    exists only while it is actively answering, so it can never sit idle
+    and block teardown.
+
+    **Teardown — best-effort, never blocks the run.** The run's
+    deliverables (code, commits, QA, summary) are complete once all
+    tasks reach `done`; `TeamDelete` is only resource cleanup and MUST
+    NOT gate run completion:
+    1. Call `TeamDelete` once.
+    2. If it errors or does not return promptly, do NOT keep waiting —
+       fall back to manual cleanup with one Bash call
+       `rm -rf ~/.claude/teams/<name>` (the team's shared dir — see
+       `docs/operations.md`).
+    3. Either way, append one line to
+       `.claude/runs/<ts>/orchestrator.log`:
+       `wave-3 teardown method=<teamdelete|manual-rm> result=<ok|forced>`,
+       then proceed to write the run summary. Never let a stalled
+       `TeamDelete` hang the run.
+
     Use the `budget_usd_team` tier from `policy.yaml`.
   - **Dynamic Workflows mode (via `/kickoff-workflow`)**: gate first
     (read-only). (1) Read `${CLAUDE_PROJECT_DIR}/.claude/settings.json` AND

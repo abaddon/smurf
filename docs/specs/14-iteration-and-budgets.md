@@ -7,19 +7,20 @@ fan-out tree of one-shot calls; with iteration, it's a closed loop.
 
 ### Layer 1: intra-wave (Agent Teams only)
 
-Wave 3 in team mode spawns developers, qa-engineer, and an
-architect-advisor as peer teammates. Communication uses `SendMessage`:
+Wave 3 in team mode seats developers and the qa-engineer as peer
+teammates. The architect-advisor is NOT seated: it is spawned on-demand
+(see below) so an idle, never-messaged advisor can never block
+`TeamDelete`. Communication uses `SendMessage`:
 
 | From | To | When | Cap |
 |---|---|---|---|
-| developer | architect-advisor | "is this port shape what you intended?" | 5 messages per developer per story (soft) |
+| developer | orchestrator | "is this port shape what you intended?" (orchestrator spawns advisor on-demand, relays reply) | 5 design questions per developer per story (soft) |
 | developer | qa-engineer | "I think AC-3 is unclear, what counts as success?" | 3 per developer (soft) |
 | qa-engineer | developer | "AC-2 fails: empty input returns null, expected []" | unbounded (1 per failure) |
-| architect-advisor | (passive) | only replies; never initiates | 8 turns total |
 
-The architect-advisor's `maxTurns: 8` is a hard cap. If exceeded, it
-sends `shutdown_response` and the orchestrator must fall back to
-re-invoking the architect as a full subagent (which loses the team
+The on-demand architect-advisor's `maxTurns: 8` is a hard cap. If
+exceeded, it returns "out of turns" and the orchestrator must fall back
+to re-invoking the architect as a full subagent (which loses the team
 context).
 
 In subagent mode (`/kickoff-team`'s baseline), Layer 1 doesn't exist —
@@ -152,7 +153,8 @@ agents read live values at pre-flight.
    Inspect `~/.claude/teams/<name>/messages/` (path may differ across
    Claude Code versions — fallback: grep the `run.ndjson` for
    `SendMessage` events). Expect:
-   - ≥1 `SendMessage` from a developer to architect-advisor
+   - ≥1 `SendMessage` from a developer to the orchestrator raising a
+     design question (which spawns the on-demand architect-advisor)
    - ≥1 `SendMessage` from qa-engineer to a developer (if any AC failed)
 
 3. **Layer 3 (cross-run)** — Phase 7 acceptance, see `13-feedback-loop.md`.
